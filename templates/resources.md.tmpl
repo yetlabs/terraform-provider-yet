@@ -1,0 +1,37 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.RenderedProviderName}}"
+subcategory: "{{ $p := index (split .Name "_") 1 }}{{ if eq $p "iam" }}IAM{{ else }}{{ $p | title }}{{ end }}"
+description: |-
+{{ index (split .Description "\n\n") 0 | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Type}}: {{.Name}}
+
+{{ .Description | trimspace }}
+
+{{ if .HasExamples -}}
+## Example Usage
+
+{{- range .ExampleFiles }}
+
+{{ tffile . }}
+{{- end }}
+{{- end }}
+
+{{ .SchemaMarkdown | trimspace }}
+{{- if or .HasImport .HasImportIDConfig }}
+
+## Import
+{{- end }}
+{{- if .HasImportIDConfig }}
+
+In Terraform v1.5.0 and later, with an [`import` block](https://developer.hashicorp.com/terraform/language/import):
+
+{{tffile .ImportIDConfigFile }}
+{{- end }}
+{{- if .HasImport }}
+
+With [`terraform import`](https://developer.hashicorp.com/terraform/cli/commands/import):
+
+{{codefile "shell" .ImportFile }}
+{{- end }}

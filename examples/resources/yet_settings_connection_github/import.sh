@@ -1,0 +1,1 @@
+terraform import yet_settings_connection_github.acme github

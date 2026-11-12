@@ -1,0 +1,1 @@
+terraform import yet_settings_aws_account.production aws_1a2b3c4d5e6f

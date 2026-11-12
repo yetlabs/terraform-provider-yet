@@ -1,0 +1,7 @@
+# The provider's binary and GoReleaser's output.
+terraform-provider-yet
+dist/
+# Terraform's own, from running examples.
+.terraform/
+*.tfstate*
+.terraform.lock.hcl
