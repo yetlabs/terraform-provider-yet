@@ -167,7 +167,7 @@ resource "yet_cloud_application" "hooks" {
 - `stage_env` (Map of Map of String) Each stage's own variables, by environment id, over `env`.
 - `stage_function` (Map of String) Which of its environment's Lambda runtimes each stage that runs as a function runs on, by environment id — the first when left out. Another region of the same account moves it with no downtime: made there first, its distribution — address, certificate, records — then pointed there, and only then the old one taken away. Another account makes it anew.
 - `stage_run` (Map of String) Where each stage runs, by environment id: `lambda`, as a function in an environment on a Lambda runtime (`aws:lambda`) or with `functions` — on a `port` from 1024, at its subdomain or the root — no YaP ports — one Yet builds is built in its account, on CodeBuild; a stage left out runs on its runtimes.
-- `subdomain` (String) The name it answers at under its stages' domains; its name's when left out, `@` for the domain's root.
+- `subdomain` (String) The name it answers at under its stages' domains: `""` for the domain itself — its root — and its name's when left out. `@` is taken for the root too.
 - `tag_pattern` (String) The tags that make a build, when it builds on tags: `v*`.
 - `timeout_seconds` (Number) How long a stage that runs as a function may take on one call, in seconds — `1` to `900`; `0`, 60. Through its address CloudFront waits 60 at most; a schedule (`yet_cloud_application_schedule`) calls it straight.
 - `yap_allowed` (List of String) The people and groups (the company's lists) who get in at its YaP ports, by address, when not everyone.

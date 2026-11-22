@@ -413,7 +413,7 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 				ElementType:         types.StringType,
 				Required:            true,
 			},
-			"subdomain":    str("The name it answers at under its stages' domains; its name's when left out, `@` for the domain's root."),
+			"subdomain":    str("The name it answers at under its stages' domains: `\"\"` for the domain itself — its root — and its name's when left out. `@` is taken for the root too."),
 			"port":         port,
 			"ports":        portsAttr(),
 			"readiness":    probeAttr("Whether a copy may take requests: a check on one of its ports."),
