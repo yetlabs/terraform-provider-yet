@@ -44,6 +44,7 @@ type awsAccountModel struct {
 	Name       types.String `tfsdk:"name"`
 	Region     types.String `tfsdk:"region"`
 	Uses       types.Set    `tfsdk:"uses"`
+	Prefix     types.String `tfsdk:"bucket_prefix"`
 	ExternalID types.String `tfsdk:"external_id"`
 }
 
@@ -74,14 +75,22 @@ func (r *awsAccountResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"uses": schema.SetAttribute{
-				MarkdownDescription: "What it is for: `mail`, `drive`, `databases` — connected, it takes those from any other account — " +
+				MarkdownDescription: "What it is for: `mail`, `drive`, `databases`, `vault` — connected, it takes those from any other account — " +
 					"and `servers`, Cloud's EC2 instances, and `applications`, its applications' S3 buckets, which any account may be for.",
 				ElementType: types.StringType,
 				Required:    true,
 				Validators: []validator.Set{
 					setvalidator.SizeAtLeast(1),
-					setvalidator.ValueStringsAre(stringvalidator.OneOf("mail", "drive", "databases", "servers", "applications")),
+					setvalidator.ValueStringsAre(stringvalidator.OneOf("mail", "drive", "databases", "servers", "applications", "vault")),
 				},
+			},
+			"bucket_prefix": schema.StringAttribute{
+				MarkdownDescription: "What its applications' buckets begin with — its stack's `ApplicationsBucketPrefix`, " +
+					"set in the stack too: empty, `yet-<company>-`; `*` any name, which lets Yet set up any bucket of the account.",
+				Optional: true, Computed: true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				Validators: []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^([a-z0-9][a-z0-9.-]{0,39}|\*)?$`),
+					"lowercase letters, digits, dots and hyphens, up to 40 — or *")},
 			},
 			"external_id": schema.StringAttribute{
 				MarkdownDescription: "Its external ID: its stack's `ExternalId`.",
@@ -98,6 +107,7 @@ func (m *awsAccountModel) from(ctx context.Context, a *yet.AWSAccount, diags *di
 	m.Name = types.StringValue(a.Name)
 	m.Region = types.StringValue(a.Region)
 	m.Uses = setOf(ctx, a.Uses, &diags.d)
+	m.Prefix = types.StringValue(a.BucketPrefix)
 	m.ExternalID = types.StringValue(a.ExternalID)
 }
 
@@ -115,6 +125,12 @@ func (r *awsAccountResource) Create(ctx context.Context, req resource.CreateRequ
 	if err != nil {
 		failed(&resp.Diagnostics, "add the AWS account", err)
 		return
+	}
+	if p := plan.Prefix; !p.IsNull() && !p.IsUnknown() && p.ValueString() != "" {
+		if a, err = r.client.Settings.Connections.AWS.SetBucketPrefix(ctx, a.ID, p.ValueString()); err != nil {
+			failed(&resp.Diagnostics, "set the AWS account's buckets' beginning", err)
+			return
+		}
 	}
 	d := &diagsSink{}
 	plan.from(ctx, a, d)
@@ -157,6 +173,12 @@ func (r *awsAccountResource) Update(ctx context.Context, req resource.UpdateRequ
 	if err != nil {
 		failed(&resp.Diagnostics, "change the AWS account", err)
 		return
+	}
+	if p := plan.Prefix; !p.IsNull() && !p.IsUnknown() && p.ValueString() != a.BucketPrefix {
+		if a, err = r.client.Settings.Connections.AWS.SetBucketPrefix(ctx, a.ID, p.ValueString()); err != nil {
+			failed(&resp.Diagnostics, "set the AWS account's buckets' beginning", err)
+			return
+		}
 	}
 	d := &diagsSink{}
 	plan.from(ctx, a, d)

@@ -33,7 +33,7 @@ func TestTheSchemasHold(t *testing.T) {
 	for _, d := range got.Diagnostics {
 		t.Errorf("%s: %s", d.Summary, d.Detail)
 	}
-	if len(got.ResourceSchemas) != 31 || len(got.DataSourceSchemas) != 9 || len(got.ActionSchemas) != 9 {
+	if len(got.ResourceSchemas) != 35 || len(got.DataSourceSchemas) != 11 || len(got.ActionSchemas) != 10 {
 		t.Errorf("resources %d, data sources %d, actions %d", len(got.ResourceSchemas), len(got.DataSourceSchemas), len(got.ActionSchemas))
 	}
 }

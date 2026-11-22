@@ -59,12 +59,12 @@ resource "yet_cloud_application_addon" "media" {
 ### Required
 
 - `application_id` (String) The application it is of.
-- `kind` (String) `overlite`, `postgres`, `redis` or `s3`.
+- `kind` (String) `overlite`, `postgres`, `redis`, `s3` or `bucketdb` — a Postgres in a bucket of each stage's, served beside each copy of the application, one to an application.
 
 ### Optional
 
 - `bucket` (Attributes List) An `s3` add-on's buckets, chosen stage by stage: a new one's `name` — it begins `yet-<company>-` — or, `existing`, one the stage's account has, reached and never made. A stage not given one gets a bucket Yet names. (see [below for nested schema](#nestedatt--bucket))
-- `env_var` (String) The variable the application is handed its address in — capitals, digits and underscores: `DATABASE_URL` for Overlite and Postgres, `REDIS_URL` for Redis, unless set. For `s3`, the prefix of what it is handed — `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT` — `S3` unless set.
+- `env_var` (String) The variable the application is handed its address in — capitals, digits and underscores: `DATABASE_URL` for Overlite, Postgres and BucketDB, `REDIS_URL` for Redis, unless set. For `s3`, the prefix of what it is handed — `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT` — `S3` unless set.
 - `features` (Set of String) What it runs with: `pgvector` for Postgres; `volatile`, `evict` for Redis.
 - `memory_mb` (Number) The memory it may use, in MB: 128 to 65536, or `0` for no limit.
 - `placement` (String) On a pool: `shared` — one, on its first member — or `member`, one on each. Overlite and Postgres are shared, Redis each member's, unless set.

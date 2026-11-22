@@ -201,10 +201,12 @@ type databaseRestoreAction struct{ actionBase }
 func newDatabaseRestoreAction() action.Action { return &databaseRestoreAction{} }
 
 type databaseRestoreModel struct {
-	DatabaseID types.String `tfsdk:"database_id"`
-	BackupID   types.String `tfsdk:"backup_id"`
-	Wait       types.Bool   `tfsdk:"wait"`
-	Timeout    types.Int64  `tfsdk:"timeout"`
+	DatabaseID    types.String `tfsdk:"database_id"`
+	BackupID      types.String `tfsdk:"backup_id"`
+	At            types.String `tfsdk:"at"`
+	EnvironmentID types.String `tfsdk:"environment_id"`
+	Wait          types.Bool   `tfsdk:"wait"`
+	Timeout       types.Int64  `tfsdk:"timeout"`
 }
 
 func (a *databaseRestoreAction) Metadata(_ context.Context, req action.MetadataRequest, resp *action.MetadataResponse) {
@@ -213,17 +215,27 @@ func (a *databaseRestoreAction) Metadata(_ context.Context, req action.MetadataR
 
 func (a *databaseRestoreAction) Schema(_ context.Context, _ action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Restores one of a database's copies in its place, on the copy's stage — and waits for it to be back.\n\n" +
+		MarkdownDescription: "Restores one of a database's copies in its place, on the copy's stage — or a BucketDB's version, " +
+			"from its history (`at`) — and waits for it to be back.\n\n" +
 			"~> **Warning:** The database stops for a moment and starts again on the copy: what was written since is not in it. " +
-			"The file before is kept on its volume, `app.db.before-restore`, until the next restore.",
+			"The file before is kept on its volume, `app.db.before-restore`, until the next restore. A BucketDB's version becomes its " +
+			"current one, its applications moving to it at their next transaction; what was written since stays in its history.",
 		Attributes: map[string]schema.Attribute{
 			"database_id": schema.StringAttribute{
 				MarkdownDescription: "The database to restore.",
 				Required:            true,
 			},
 			"backup_id": schema.StringAttribute{
-				MarkdownDescription: "The copy: one of its backups, or a file uploaded as one.",
-				Required:            true,
+				MarkdownDescription: "The copy: one of its backups, or a file uploaded as one. Not with `at`.",
+				Optional:            true,
+			},
+			"at": schema.StringAttribute{
+				MarkdownDescription: "A BucketDB's version, by its id in its history (`yet.Databases.Versions`). Not with `backup_id`.",
+				Optional:            true,
+			},
+			"environment_id": schema.StringAttribute{
+				MarkdownDescription: "The stage `at` is put back on, for an application's own BucketDB on several: its last unless set.",
+				Optional:            true,
 			},
 			"wait": schema.BoolAttribute{
 				MarkdownDescription: "Whether to wait for it to be back: `true` unless set.",
@@ -245,7 +257,17 @@ func (a *databaseRestoreAction) Invoke(ctx context.Context, req action.InvokeReq
 		return
 	}
 	id := m.DatabaseID.ValueString()
-	rs, err := a.client.Cloud.Databases.Restore(ctx, id, m.BackupID.ValueString())
+	if m.BackupID.ValueString() == "" == (m.At.ValueString() == "") {
+		resp.Diagnostics.AddError("A copy, or a version", "Set `backup_id` — or, a BucketDB's version, `at` — one of them.")
+		return
+	}
+	var rs *yet.Restore
+	var err error
+	if at := m.At.ValueString(); at != "" {
+		rs, err = a.client.Cloud.Databases.RestoreVersion(ctx, id, m.EnvironmentID.ValueString(), at)
+	} else {
+		rs, err = a.client.Cloud.Databases.Restore(ctx, id, m.BackupID.ValueString())
+	}
 	if err != nil {
 		failed(&resp.Diagnostics, "restore the database", err)
 		return
@@ -549,6 +571,47 @@ func (a *dnsZoneVerifyAction) Invoke(ctx context.Context, req action.InvokeReque
 		return
 	}
 	resp.SendProgress(action.InvokeProgressEvent{Message: z.Name + " is " + z.Status})
+}
+
+// ── yet_cloud_server_update_agent ────────────────────────────────────────────
+
+type serverUpdateAgentAction struct{ actionBase }
+
+func newServerUpdateAgentAction() action.Action { return &serverUpdateAgentAction{} }
+
+type serverUpdateAgentModel struct {
+	ServerID types.String `tfsdk:"server_id"`
+}
+
+func (a *serverUpdateAgentAction) Metadata(_ context.Context, req action.MetadataRequest, resp *action.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_cloud_server_update_agent"
+}
+
+func (a *serverUpdateAgentAction) Schema(_ context.Context, _ action.SchemaRequest, resp *action.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Asks a server's agent to update now, to Cloud's version, rather than at its own next try, " +
+			"half an hour after the one before: it does at its next check-ins. Only an agent behind Cloud is asked.",
+		Attributes: map[string]schema.Attribute{
+			"server_id": schema.StringAttribute{
+				MarkdownDescription: "The server.",
+				Required:            true,
+			},
+		},
+	}
+}
+
+func (a *serverUpdateAgentAction) Invoke(ctx context.Context, req action.InvokeRequest, resp *action.InvokeResponse) {
+	var m serverUpdateAgentModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &m)...)
+	if resp.Diagnostics.HasError() || !a.ready(resp) {
+		return
+	}
+	sv, err := a.client.Cloud.Servers.UpdateAgent(ctx, m.ServerID.ValueString())
+	if err != nil {
+		failed(&resp.Diagnostics, "ask its agent to update", err)
+		return
+	}
+	resp.SendProgress(action.InvokeProgressEvent{Message: sv.Name + "'s agent asked to update, from " + sv.AgentVersion})
 }
 
 // ── yet_settings_mail_send_email ─────────────────────────────────────────────

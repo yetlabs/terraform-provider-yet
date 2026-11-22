@@ -117,14 +117,14 @@ func (r *applicationAddonResource) Schema(_ context.Context, _ resource.SchemaRe
 				PlanModifiers:       replace,
 			},
 			"kind": schema.StringAttribute{
-				MarkdownDescription: "`overlite`, `postgres`, `redis` or `s3`.",
+				MarkdownDescription: "`overlite`, `postgres`, `redis`, `s3` or `bucketdb` — a Postgres in a bucket of each stage's, served beside each copy of the application, one to an application.",
 				Required:            true,
 				PlanModifiers:       replace,
-				Validators:          []validator.String{stringvalidator.OneOf("overlite", "postgres", "redis", "s3")},
+				Validators:          []validator.String{stringvalidator.OneOf("overlite", "postgres", "redis", "s3", "bucketdb")},
 			},
 			"env_var": schema.StringAttribute{
 				MarkdownDescription: "The variable the application is handed its address in — " + envVarRule +
-					": `DATABASE_URL` for Overlite and Postgres, `REDIS_URL` for Redis, unless set. " +
+					": `DATABASE_URL` for Overlite, Postgres and BucketDB, `REDIS_URL` for Redis, unless set. " +
 					"For `s3`, the prefix of what it is handed — `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT` — `S3` unless set.",
 				Optional:      true,
 				Computed:      true,

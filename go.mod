@@ -7,7 +7,7 @@ require (
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
 	github.com/hashicorp/terraform-plugin-go v0.31.0
 	github.com/hashicorp/terraform-plugin-testing v1.16.0
-	github.com/yetlabs/yet-sdk-go v0.0.0-20261112042857-f5081ad11d4a
+	github.com/yetlabs/yet-sdk-go v1.0.0
 )
 
 require (

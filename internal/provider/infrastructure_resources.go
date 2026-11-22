@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"cmp"
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -153,6 +154,7 @@ type serverModel struct {
 	RackID        types.String `tfsdk:"rack_id"`
 	Origin        types.String `tfsdk:"origin"`
 	AWSAccountID  types.String `tfsdk:"aws_account_id"`
+	Service       types.String `tfsdk:"service"`
 	Region        types.String `tfsdk:"region"`
 	InstanceType  types.String `tfsdk:"instance_type"`
 	DiskGB        types.Int64  `tfsdk:"disk_gb"`
@@ -199,6 +201,13 @@ func (r *serverResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 					"which joins by itself as it boots; destroying the server ends it. Left out, a machine of the company's, joined with `join_command`.",
 				Optional:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"service": schema.StringAttribute{
+				MarkdownDescription: "With `aws_account_id`: `ec2` (the default), an instance; or `serverless` — no machine, the account itself, " +
+					"connected for Applications, online at once, for Lambda runtimes (`yet_cloud_runtime` of stack `aws:lambda`), a region each.",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace(), stringplanmodifier.UseStateForUnknown()},
 			},
 			"region": schema.StringAttribute{
 				MarkdownDescription: "The instance's AWS region; the account's when left out.",
@@ -257,6 +266,10 @@ func (m *serverModel) from(s *yet.Server) {
 		m.AWSAccountID = types.StringValue(s.AWSAccountID)
 	}
 	m.Region = types.StringValue(s.Region)
+	m.Service = types.StringValue("")
+	if s.Origin == "aws" {
+		m.Service = types.StringValue(cmp.Or(s.Service, "ec2"))
+	}
 	m.InstanceType = types.StringValue(s.InstanceType)
 	m.DiskGB = types.Int64Value(int64(s.DiskGB))
 	m.InstanceID = types.StringValue(s.InstanceID)
@@ -276,6 +289,7 @@ func (r *serverResource) Create(ctx context.Context, req resource.CreateRequest,
 		s, err := r.client.Cloud.Servers.StartInAWS(ctx, yet.AWSServer{
 			Name: plan.Name.ValueString(), RackID: plan.RackID.ValueString(), AWSAccountID: plan.AWSAccountID.ValueString(),
 			Region: plan.Region.ValueString(), InstanceType: plan.InstanceType.ValueString(), DiskGB: int32(plan.DiskGB.ValueInt64()),
+			Service: plan.Service.ValueString(),
 		})
 		if err != nil {
 			failed(&resp.Diagnostics, "start the server in AWS", err)
@@ -367,6 +381,7 @@ type runtimeModel struct {
 	TunnelID       types.String `tfsdk:"tunnel_id"`
 	Tunnel         types.Bool   `tfsdk:"tunnel"`
 	IngressEnabled types.Bool   `tfsdk:"ingress_enabled"`
+	Region         types.String `tfsdk:"region"`
 	Status         types.String `tfsdk:"status"`
 }
 
@@ -421,6 +436,14 @@ func (r *runtimeResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:      true,
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
+			"region": schema.StringAttribute{
+				MarkdownDescription: "A Lambda runtime's region (stack `aws:lambda`, on a serverless `yet_cloud_server`): where its functions run, " +
+					"in the server's account — one runtime a region; the account's own when left out. An environment may list several " +
+					"(`functions`), and each application's stage picks one (`stage_function`).",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace(), stringplanmodifier.UseStateForUnknown()},
+			},
 			"status": schema.StringAttribute{Computed: true, MarkdownDescription: "How it stands, as Cloud shows it."},
 		},
 	}
@@ -437,6 +460,7 @@ func (m *runtimeModel) from(rt *yet.Runtime) {
 	m.TunnelID = types.StringValue(rt.TunnelID)
 	m.Tunnel = types.BoolValue(rt.TunnelID != "")
 	m.IngressEnabled = types.BoolValue(rt.IngressEnabled)
+	m.Region = types.StringValue(rt.Region)
 	m.Status = types.StringValue(rt.Status)
 }
 
@@ -478,7 +502,7 @@ func (r *runtimeResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 	rt, err := r.client.Cloud.Runtimes.Create(ctx, yet.RuntimeInput{
 		Name: strPtr(plan.Name), Stack: plan.Stack.ValueString(), ServerID: plan.ServerID.ValueString(),
-		IngressEnabled: boolPtr(plan.IngressEnabled),
+		IngressEnabled: boolPtr(plan.IngressEnabled), Region: plan.Region.ValueString(),
 	})
 	if err != nil {
 		failed(&resp.Diagnostics, "create the runtime", err)

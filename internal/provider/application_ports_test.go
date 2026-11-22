@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"slices"
 	"sync"
 	"testing"
 
@@ -77,6 +78,7 @@ func (f *fakeApps) apply(in yet.ApplicationInput, readiness, liveness json.RawMe
 			}
 		}
 	}
+	hadYaP := slices.ContainsFunc(a.Ports, func(p yet.AppPort) bool { return p.YaP })
 	if in.Ports != nil {
 		a.Ports = *in.Ports
 		chosen := -1
@@ -100,6 +102,16 @@ func (f *fakeApps) apply(in yet.ApplicationInput, readiness, liveness json.RawMe
 			}
 		}
 		a.Port = a.Ports[max(chosen, 0)].Port
+	}
+	if in.YaPEveryone != nil {
+		a.YaPEveryone = *in.YaPEveryone
+	}
+	if in.YaPAllowed != nil {
+		a.YaPAllowed = *in.YaPAllowed
+	}
+	// Its first YaP port lets everyone in, unless said.
+	if !hadYaP && slices.ContainsFunc(a.Ports, func(p yet.AppPort) bool { return p.YaP }) && in.YaPEveryone == nil && len(a.YaPAllowed) == 0 {
+		a.YaPEveryone = true
 	}
 	if in.Replicas != nil {
 		a.Replicas = *in.Replicas
@@ -213,6 +225,53 @@ resource "yet_cloud_application" "api" {
 				},
 			},
 			{ResourceName: "yet_cloud_application.api", ImportState: true, ImportStateVerify: true},
+		},
+	})
+}
+
+// YaP: a public http port the company's people get through signed in —
+// everyone at first, then the ones said — and never a private one.
+func TestApplicationYaP(t *testing.T) {
+	srv := newFakeApps(t)
+	app := func(rest string) string {
+		return cloudProvider(srv.URL) + `
+resource "yet_cloud_application" "admin" {
+  namespace_id = "ns1"
+  name         = "admin"
+  stages       = ["env1"]
+` + rest + `
+}
+`
+	}
+	is := func(p tfjsonpath.Path, v knownvalue.Check) statecheck.StateCheck {
+		return statecheck.ExpectKnownValue("yet_cloud_application.admin", p, v)
+	}
+	tfresource.UnitTest(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: factories,
+		Steps: []tfresource.TestStep{
+			{
+				Config:      app(`  ports = [{ name = "http", port = 3000, yap = true }]`),
+				ExpectError: regexp.MustCompile(`A YaP port is public`),
+			},
+			{
+				Config: app(`  ports = [{ name = "http", port = 3000, public = true, yap = true }]`),
+				ConfigStateChecks: []statecheck.StateCheck{
+					is(tfjsonpath.New("ports").AtSliceIndex(0).AtMapKey("yap"), knownvalue.Bool(true)),
+					is(tfjsonpath.New("yap_everyone"), knownvalue.Bool(true)),
+				},
+			},
+			{
+				Config: app(`
+  ports        = [{ name = "http", port = 3000, public = true, yap = true }]
+  yap_everyone = false
+  yap_allowed  = ["ops@acme.dev"]
+`),
+				ConfigStateChecks: []statecheck.StateCheck{
+					is(tfjsonpath.New("yap_everyone"), knownvalue.Bool(false)),
+					is(tfjsonpath.New("yap_allowed"), knownvalue.ListExact([]knownvalue.Check{knownvalue.StringExact("ops@acme.dev")})),
+				},
+			},
+			{ResourceName: "yet_cloud_application.admin", ImportState: true, ImportStateVerify: true},
 		},
 	})
 }

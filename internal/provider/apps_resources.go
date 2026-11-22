@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -38,6 +39,7 @@ type environmentModel struct {
 	Prefix     types.String `tfsdk:"prefix"`
 	Domain     types.String `tfsdk:"domain"`
 	AWSAccount types.String `tfsdk:"aws_account_id"`
+	Lambda     types.List   `tfsdk:"functions"`
 }
 
 func (r *environmentResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -85,6 +87,13 @@ func environmentAttributes() map[string]schema.Attribute {
 				"Without one, its buckets wait. A stage on Yet's EC2 servers has them in its servers' account.",
 			Optional: true,
 		},
+		"functions": schema.ListAttribute{
+			MarkdownDescription: "Lambda runtimes (`yet_cloud_runtime` of stack `aws:lambda`, on a serverless `yet_cloud_server`) beside its runtimes, " +
+				"its applications may run on as functions — each stage choosing, by `yet_cloud_application`'s `stage_run` and `stage_function`. " +
+				"Empty, Lambda is off; one goes only once no stage runs as a function on it. For Lambda alone, its `runtime_id` is one instead.",
+			ElementType: types.StringType,
+			Optional:    true,
+		},
 	}
 }
 
@@ -106,6 +115,9 @@ func (m *environmentModel) from(e *yet.Environment) {
 	m.Prefix = orNull(e.Prefix)
 	m.Domain = types.StringValue(e.Domain)
 	m.AWSAccount = orNull(e.AWSAccountID)
+	if len(e.Functions) > 0 || !m.Lambda.IsNull() {
+		m.Lambda, _ = types.ListValueFrom(context.Background(), types.StringType, nonNil(e.Functions))
+	}
 }
 
 // input is everything about where it runs, said whole: an empty value takes it away.
@@ -119,6 +131,7 @@ func (m environmentModel) input() yet.EnvironmentInput {
 		ZoneID:       text(m.ZoneID),
 		Prefix:       text(m.Prefix),
 		AWSAccountID: text(m.AWSAccount),
+		Functions:    regionsOf(m.Lambda),
 	}
 }
 
@@ -297,8 +310,14 @@ type applicationModel struct {
 	MemoryMB        types.Int64  `tfsdk:"memory_mb"`
 	ScaleCPU        types.Int64  `tfsdk:"scale_cpu"`
 	ScaleMemory     types.Int64  `tfsdk:"scale_memory"`
+	TimeoutSeconds  types.Int64  `tfsdk:"timeout_seconds"`
+	FunctionRoles   types.Map    `tfsdk:"function_roles"`
+	FunctionPolicy  types.String `tfsdk:"function_policy"`
+	SecretEnv       types.Map    `tfsdk:"secret_env"`
 	Env             types.Map    `tfsdk:"env"`
 	StageEnv        types.Map    `tfsdk:"stage_env"`
+	StageRun        types.Map    `tfsdk:"stage_run"`
+	StageFunction   types.Map    `tfsdk:"stage_function"`
 	EnvironmentSize types.Map    `tfsdk:"environment_size"`
 	Repository      types.String `tfsdk:"repository"`
 	Branch          types.String `tfsdk:"branch"`
@@ -308,6 +327,8 @@ type applicationModel struct {
 	BuildOn         types.String `tfsdk:"build_on"`
 	TagPattern      types.String `tfsdk:"tag_pattern"`
 	AutoPromote     types.List   `tfsdk:"auto_promote"`
+	YaPEveryone     types.Bool   `tfsdk:"yap_everyone"`
+	YaPAllowed      types.List   `tfsdk:"yap_allowed"`
 }
 
 // environmentSizeModel is one environment's own size; a field null takes the application's.
@@ -406,6 +427,36 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 				"`10` to `95`, in steps of `5`: `70` unless set."), 10),
 			"scale_memory": scale(num("Where it scales out on memory, when it grows, as a percent of `memory_mb` — "+
 				"`10` to `95`, in steps of `5`. `0`, never on memory: the default."), 0),
+			"timeout_seconds": schema.Int64Attribute{
+				MarkdownDescription: "How long a stage that runs as a function may take on one call, in seconds — `1` to `900`; `0`, 60. " +
+					"Through its address CloudFront waits 60 at most; a schedule (`yet_cloud_application_schedule`) calls it straight.",
+				Optional:      true,
+				Computed:      true,
+				Validators:    []validator.Int64{int64validator.Between(0, 900)},
+				PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+			},
+			"secret_env": schema.MapAttribute{
+				MarkdownDescription: "Its variables from Vault, in every stage: a name, a secret (`yet_vault_secret`'s `id`) of a vault that lets it " +
+					"(`yet_vault_grant`). On a runtime in a Kubernetes Secret beside it, on Lambda in its function's variables — never in Yet — " +
+					"and in its account's Parameter Store under `/yet/<company>/<application id>/<name>`, for it to read itself.",
+				ElementType: types.StringType,
+				Optional:    true,
+			},
+			"function_policy": schema.StringAttribute{
+				MarkdownDescription: "What else its functions' role may do — the bucket of its database, a queue: an IAM policy document " +
+					"(`jsonencode({ Version = \"2012-10-17\", Statement = [...] })`), 6 KB at most, put on the role as it is made, " +
+					"so its first deploy already has it. Its own buckets it reaches without.",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: keep,
+			},
+			"function_roles": schema.MapAttribute{
+				MarkdownDescription: "The role each stage that runs as a function runs as, its ARN by environment id — said once the role is " +
+					"there, as the function is first put in. What else it may reach goes in `function_policy`, which it is made with.",
+				ElementType:   types.StringType,
+				Computed:      true,
+				PlanModifiers: []planmodifier.Map{mapplanmodifier.UseStateForUnknown()},
+			},
 			"env": schema.MapAttribute{
 				MarkdownDescription: "Its variables, in every stage.",
 				ElementType:         types.StringType,
@@ -419,6 +470,23 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Map{mapplanmodifier.UseStateForUnknown()},
+			},
+			"stage_run": schema.MapAttribute{
+				MarkdownDescription: "Where each stage runs, by environment id: `lambda`, as a function in an environment on a Lambda runtime (`aws:lambda`) or with `functions` — " +
+					"on a `port` from 1024, at its subdomain or the root — no YaP ports — one Yet builds is built in its account, on CodeBuild; " +
+					"a stage left out runs on its runtimes.",
+				ElementType:   types.StringType,
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.Map{mapplanmodifier.UseStateForUnknown()},
+			},
+			"stage_function": schema.MapAttribute{
+				MarkdownDescription: "Which of its environment's Lambda runtimes each stage that runs as a function runs on, by environment id — " +
+					"the first when left out. Another region of the same account moves it with no downtime: made there first, its distribution — address, certificate, records — then pointed there, and only then the old one taken away. Another account makes it anew.",
+				ElementType:   types.StringType,
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.Map{mapplanmodifier.UseStateForUnknown()},
 			},
 			"environment_size": schema.MapNestedAttribute{
 				MarkdownDescription: "Each environment's own size, by environment id: each field said takes the place of the application's " +
@@ -446,10 +514,31 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 				MarkdownDescription: "Where its default port answers inside its stage's cluster — `http://<id>.<namespace id>.svc.cluster.local`, " +
 					"on port 80; another port of its, on its own number — to the applications of its namespace alone.",
 			},
-			"build_on":    str("What makes a build: pushes to `branch`, or tags."),
+			"build_on": schema.StringAttribute{
+				MarkdownDescription: "What makes a build, once it has a `repository`: `\"\"` (the default), every push to its `branch` — " +
+					"`main` unless set — or `tag`, every tag matching `tag_pattern`. Each build is released to the first stage " +
+					"as it is done; a release by `yet_cloud_application_release` needs none of this.",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: keep,
+				Validators:    []validator.String{stringvalidator.OneOf("", "tag")},
+			},
 			"tag_pattern": str("The tags that make a build, when it builds on tags: `v*`."),
 			"auto_promote": schema.ListAttribute{
 				MarkdownDescription: "The stages that promote to the next by themselves, once running.",
+				ElementType:         types.StringType,
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+			},
+			"yap_everyone": schema.BoolAttribute{
+				MarkdownDescription: "Whether everyone at the company — today and whoever joins — gets in at its YaP ports; if not, " +
+					"only `yap_allowed`. Its first YaP port lets everyone in, unless said.",
+				Optional: true, Computed: true,
+				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+			},
+			"yap_allowed": schema.ListAttribute{
+				MarkdownDescription: "The people and groups (the company's lists) who get in at its YaP ports, by address, when not everyone.",
 				ElementType:         types.StringType,
 				Optional:            true,
 				Computed:            true,
@@ -461,35 +550,42 @@ func (r *applicationResource) Schema(_ context.Context, _ resource.SchemaRequest
 
 func (m applicationModel) input(ctx context.Context, d *diagsSink) yet.ApplicationInput {
 	in := yet.ApplicationInput{
-		NamespaceID:   strPtr(m.NamespaceID),
-		Name:          strPtr(m.Name),
-		Stages:        stringsOf(ctx, m.Stages, &d.d),
-		Subdomain:     strPtr(m.Subdomain),
-		Port:          intPtr(m.Port),
-		Replicas:      intPtr(m.Replicas),
-		MaxReplicas:   intPtr(m.MaxReplicas),
-		CPUMillicores: intPtr(m.CPUMillicores),
-		MemoryMB:      intPtr(m.MemoryMB),
-		ScaleCPU:      intPtr(m.ScaleCPU),
-		ScaleMemory:   intPtr(m.ScaleMemory),
-		Repository:    strPtr(m.Repository),
-		BuildRoot:     strPtr(m.BuildRoot),
-		Dockerfile:    strPtr(m.Dockerfile),
-		Branch:        strPtr(m.Branch),
-		BuildOn:       strPtr(m.BuildOn),
-		TagPattern:    strPtr(m.TagPattern),
-		AutoPromote:   stringsOf(ctx, m.AutoPromote, &d.d),
-		Readiness:     probeIn(ctx, m.Readiness, d),
-		NoReadiness:   m.Readiness.IsNull(),
-		Liveness:      probeIn(ctx, m.Liveness, d),
-		NoLiveness:    m.Liveness.IsNull(),
+		NamespaceID:    strPtr(m.NamespaceID),
+		Name:           strPtr(m.Name),
+		Stages:         stringsOf(ctx, m.Stages, &d.d),
+		Subdomain:      strPtr(m.Subdomain),
+		Port:           intPtr(m.Port),
+		Replicas:       intPtr(m.Replicas),
+		MaxReplicas:    intPtr(m.MaxReplicas),
+		CPUMillicores:  intPtr(m.CPUMillicores),
+		MemoryMB:       intPtr(m.MemoryMB),
+		ScaleCPU:       intPtr(m.ScaleCPU),
+		ScaleMemory:    intPtr(m.ScaleMemory),
+		TimeoutSeconds: intPtr(m.TimeoutSeconds),
+		FunctionPolicy: strPtr(m.FunctionPolicy),
+		SecretEnv:      secretEnvOf(ctx, m.SecretEnv, &d.d),
+		Repository:     strPtr(m.Repository),
+		BuildRoot:      strPtr(m.BuildRoot),
+		Dockerfile:     strPtr(m.Dockerfile),
+		Branch:         strPtr(m.Branch),
+		BuildOn:        strPtr(m.BuildOn),
+		TagPattern:     strPtr(m.TagPattern),
+		AutoPromote:    stringsOf(ctx, m.AutoPromote, &d.d),
+		Readiness:      probeIn(ctx, m.Readiness, d),
+		NoReadiness:    m.Readiness.IsNull(),
+		Liveness:       probeIn(ctx, m.Liveness, d),
+		NoLiveness:     m.Liveness.IsNull(),
+		YaPAllowed:     stringsOf(ctx, m.YaPAllowed, &d.d),
+	}
+	if known(m.YaPEveryone) {
+		in.YaPEveryone = m.YaPEveryone.ValueBoolPointer()
 	}
 	if ports := portsIn(ctx, m.Ports, d); ports != nil && !m.Ports.IsUnknown() {
 		list := make([]yet.AppPort, len(ports))
 		for i, p := range ports {
 			list[i] = yet.AppPort{
 				Name: p.Name.ValueString(), Port: int(p.Port.ValueInt64()), Protocol: p.Protocol.ValueString(),
-				Public: p.Public.ValueBool(), Default: p.Default.ValueBool(), Address: p.Address.ValueString(),
+				Public: p.Public.ValueBool(), YaP: p.YaP.ValueBool(), Default: p.Default.ValueBool(), Address: p.Address.ValueString(),
 			}
 		}
 		in.Ports = &list
@@ -503,6 +599,16 @@ func (m applicationModel) input(ctx context.Context, d *diagsSink) yet.Applicati
 		stageEnv := map[string]map[string]string{}
 		d.d.Append(m.StageEnv.ElementsAs(ctx, &stageEnv, false)...)
 		in.StageEnv = &stageEnv
+	}
+	if known(m.StageRun) {
+		stageRun := map[string]string{}
+		d.d.Append(m.StageRun.ElementsAs(ctx, &stageRun, false)...)
+		in.StageRun = &stageRun
+	}
+	if known(m.StageFunction) {
+		stageFunction := map[string]string{}
+		d.d.Append(m.StageFunction.ElementsAs(ctx, &stageFunction, false)...)
+		in.StageFunction = &stageFunction
 	}
 	if known(m.EnvironmentSize) {
 		models := map[string]environmentSizeModel{}
@@ -543,6 +649,18 @@ func (m *applicationModel) from(ctx context.Context, a *yet.Application, d *diag
 	m.MemoryMB = types.Int64Value(int64(a.MemoryMB))
 	m.ScaleCPU = types.Int64Value(int64(a.ScaleCPU))
 	m.ScaleMemory = types.Int64Value(int64(a.ScaleMemory))
+	m.TimeoutSeconds = types.Int64Value(int64(a.TimeoutSeconds))
+	m.FunctionPolicy = types.StringValue(a.FunctionPolicy)
+	if len(a.SecretEnv) > 0 || !m.SecretEnv.IsNull() {
+		m.SecretEnv = mapOf(ctx, a.SecretEnv, &d.d)
+	}
+	roles := map[string]string{}
+	for _, f := range a.Functions {
+		if f.RoleARN != "" {
+			roles[f.EnvironmentID] = f.RoleARN
+		}
+	}
+	m.FunctionRoles = mapOf(ctx, roles, &d.d)
 	m.Env = mapOf(ctx, a.Env, &d.d)
 	stageEnv := a.StageEnv
 	if stageEnv == nil {
@@ -551,6 +669,8 @@ func (m *applicationModel) from(ctx context.Context, a *yet.Application, d *diag
 	v, diags := types.MapValueFrom(ctx, types.MapType{ElemType: types.StringType}, stageEnv)
 	d.d.Append(diags...)
 	m.StageEnv = v
+	m.StageRun = mapOf(ctx, a.StageRun, &d.d)
+	m.StageFunction = mapOf(ctx, a.StageFunction, &d.d)
 	environmentSize := map[string]environmentSizeModel{}
 	for env, st := range a.EnvironmentSize {
 		environmentSize[env] = environmentSizeModel{
@@ -570,6 +690,8 @@ func (m *applicationModel) from(ctx context.Context, a *yet.Application, d *diag
 	m.BuildOn = types.StringValue(a.BuildOn)
 	m.TagPattern = types.StringValue(a.TagPattern)
 	m.AutoPromote = listOf(ctx, a.AutoPromote, &d.d)
+	m.YaPEveryone = types.BoolValue(a.YaPEveryone)
+	m.YaPAllowed = listOf(ctx, a.YaPAllowed, &d.d)
 }
 
 func (r *applicationResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -672,6 +794,8 @@ type databaseModel struct {
 	BackupEvery    types.Int64  `tfsdk:"backup_every"`
 	BackupKeep     types.Int64  `tfsdk:"backup_keep"`
 	BackupTarget   types.String `tfsdk:"backup_target"`
+	BucketName     types.String `tfsdk:"bucket_name"`
+	BucketExisting types.Bool   `tfsdk:"bucket_existing"`
 }
 
 func (r *databaseResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -695,10 +819,10 @@ func (r *databaseResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 		Attributes: map[string]schema.Attribute{
 			"id": idAttr,
 			"kind": schema.StringAttribute{
-				MarkdownDescription: "`overlite`, `postgres` or `redis`.",
+				MarkdownDescription: "`overlite`, `postgres`, `redis` or `bucketdb` — in a bucket of the environment's AWS account, served beside each application attached to it.",
 				Required:            true,
 				PlanModifiers:       replace,
-				Validators:          []validator.String{stringvalidator.OneOf("overlite", "postgres", "redis")},
+				Validators:          []validator.String{stringvalidator.OneOf("overlite", "postgres", "redis", "bucketdb")},
 			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "Its name in the environment: " + kubeNameRule + ".",
@@ -725,7 +849,17 @@ func (r *databaseResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			"studio_role":      str("Who opens it in Cloud's studio: `viewer`, `developer` or `admin`."),
 			"studio_read_only": flag("Whether the studio only reads."),
 			"env_var":          schema.StringAttribute{Computed: true, PlanModifiers: keep, MarkdownDescription: "The variable attached applications find it in."},
-			"image":            schema.StringAttribute{Computed: true, MarkdownDescription: "The image it runs."},
+			"bucket_name": schema.StringAttribute{
+				MarkdownDescription: "A `bucketdb`'s bucket, as chosen: a new one's name — it begins `yet-<company>-` — " +
+					"or, `bucket_existing`, one the environment's account has. Unset, Yet names it.",
+				Optional: true, PlanModifiers: replace,
+			},
+			"bucket_existing": schema.BoolAttribute{
+				MarkdownDescription: "Whether `bucket_name` is one the account has: reached, never made.",
+				Optional:            true,
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.RequiresReplace()},
+			},
+			"image": schema.StringAttribute{Computed: true, MarkdownDescription: "The image it runs."},
 			"backup_every": schema.Int64Attribute{
 				MarkdownDescription: "How often it is copied, in hours: 1 to 168, or `0` for never. " +
 					"Copies are kept for an Overlite on a runtime of the company's.",
@@ -813,7 +947,11 @@ func (r *databaseResource) Create(ctx context.Context, req resource.CreateReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	db, err := r.client.Cloud.Databases.Create(ctx, plan.Kind.ValueString(), plan.Name.ValueString(), plan.EnvironmentID.ValueString())
+	var bucket *yet.BucketChoice
+	if name := plan.BucketName.ValueString(); name != "" {
+		bucket = &yet.BucketChoice{Name: name, Existing: plan.BucketExisting.ValueBool()}
+	}
+	db, err := r.client.Cloud.Databases.Create(ctx, plan.Kind.ValueString(), plan.Name.ValueString(), plan.EnvironmentID.ValueString(), bucket)
 	if err != nil {
 		failed(&resp.Diagnostics, "create the database", err)
 		return
@@ -886,4 +1024,31 @@ func (r *databaseResource) Delete(ctx context.Context, req resource.DeleteReques
 
 func (r *databaseResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	importID(ctx, req, resp)
+}
+
+// regionsOf is a list of regions as the API takes it, whole: none, Lambda off.
+func regionsOf(l types.List) *[]string {
+	out := []string{}
+	for _, v := range l.Elements() {
+		if s, ok := v.(types.String); ok {
+			out = append(out, s.ValueString())
+		}
+	}
+	return &out
+}
+
+func nonNil(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
+}
+
+// secretEnvOf is an application's variables from Vault, sent whole: none given, none.
+func secretEnvOf(ctx context.Context, m types.Map, diags *diag.Diagnostics) *map[string]string {
+	out := map[string]string{}
+	if known(m) {
+		diags.Append(m.ElementsAs(ctx, &out, false)...)
+	}
+	return &out
 }

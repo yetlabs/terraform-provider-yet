@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"github.com/hashicorp/terraform-plugin-testing/compare"
 	"regexp"
 	"testing"
 
@@ -197,6 +198,18 @@ data "yet_cloud_environment" "staging" {
   name = yet_cloud_environment.staging.name
 }
 
+data "yet_cloud_namespace" "shop" {
+  name = yet_cloud_namespace.shop.name
+}
+
+data "yet_cloud_environment" "by_id" {
+  id = yet_cloud_environment.staging.id
+}
+
+data "yet_cloud_namespace" "by_id" {
+  id = yet_cloud_namespace.shop.id
+}
+
 action "yet_cloud_application_release" "api" {
   config {
     application_id = yet_cloud_application.api.id
@@ -237,6 +250,9 @@ data "yet_cloud_runtime" "k3s" {
 					statecheck.ExpectKnownValue("yet_cloud_application.api", tfjsonpath.New("readiness").AtMapKey("period_seconds"), knownvalue.Int64Exact(10)),
 					statecheck.ExpectKnownValue("yet_cloud_database.orders", tfjsonpath.New("env_var"), knownvalue.NotNull()),
 					statecheck.ExpectKnownValue("data.yet_cloud_environment.staging", tfjsonpath.New("color"), knownvalue.StringExact("amber")),
+					statecheck.CompareValuePairs("data.yet_cloud_namespace.shop", tfjsonpath.New("id"), "yet_cloud_namespace.shop", tfjsonpath.New("id"), compare.ValuesSame()),
+					statecheck.ExpectKnownValue("data.yet_cloud_namespace.by_id", tfjsonpath.New("name"), knownvalue.StringExact("tf-acc-shop")),
+					statecheck.ExpectKnownValue("data.yet_cloud_environment.by_id", tfjsonpath.New("name"), knownvalue.StringExact("tf-acc-staging")),
 					statecheck.ExpectKnownValue("yet_cloud_dns_zone.acme", tfjsonpath.New("nameservers"), knownvalue.NotNull()),
 				},
 			},

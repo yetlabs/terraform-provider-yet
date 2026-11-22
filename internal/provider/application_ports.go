@@ -36,7 +36,7 @@ default — it refuses instead, so what is said stays what is kept.
 var (
 	portAttrTypes = map[string]attr.Type{
 		"name": types.StringType, "port": types.Int64Type, "protocol": types.StringType,
-		"public": types.BoolType, "default": types.BoolType, "address": types.StringType,
+		"public": types.BoolType, "yap": types.BoolType, "default": types.BoolType, "address": types.StringType,
 	}
 	probeAttrTypes = map[string]attr.Type{
 		"port": types.StringType, "protocol": types.StringType, "path": types.StringType,
@@ -53,6 +53,7 @@ type appPortModel struct {
 	Port     types.Int64  `tfsdk:"port"`
 	Protocol types.String `tfsdk:"protocol"`
 	Public   types.Bool   `tfsdk:"public"`
+	YaP      types.Bool   `tfsdk:"yap"`
 	Default  types.Bool   `tfsdk:"default"`
 	Address  types.String `tfsdk:"address"`
 }
@@ -95,6 +96,13 @@ func portsAttr() schema.ListNestedAttribute {
 			"public": schema.BoolAttribute{
 				MarkdownDescription: "Whether it answers on the internet too, not only inside the cluster; a `tcp` one cannot, for now.",
 				Optional:            true, Computed: true,
+				Default: booldefault.StaticBool(false),
+			},
+			"yap": schema.BoolAttribute{
+				MarkdownDescription: "YaP — Yet-Aware Proxy: for a public `http` port, only the company's people get through, signed in " +
+					"with Yet; what it answers is told who they are — `X-Yet-Email`, `X-Yet-Name`, `X-Yet-Groups` and " +
+					"`X-Yet-Assertion`, the ID token Yet signed. Who gets in is the application's `yap_everyone` and `yap_allowed`.",
+				Optional: true, Computed: true,
 				Default: booldefault.StaticBool(false),
 			},
 			"default": schema.BoolAttribute{
@@ -170,7 +178,7 @@ func portsOf(ctx context.Context, ps []yet.AppPort, d *diagsSink) types.List {
 	for i, p := range ps {
 		models[i] = appPortModel{
 			Name: types.StringValue(p.Name), Port: types.Int64Value(int64(p.Port)), Protocol: types.StringValue(p.Protocol),
-			Public: types.BoolValue(p.Public), Default: types.BoolValue(p.Default), Address: types.StringNull(),
+			Public: types.BoolValue(p.Public), YaP: types.BoolValue(p.YaP), Default: types.BoolValue(p.Default), Address: types.StringNull(),
 		}
 		if p.Address != "" {
 			models[i].Address = types.StringValue(p.Address)
@@ -234,6 +242,12 @@ func (r *applicationResource) ValidateConfig(ctx context.Context, req resource.V
 		names[p.Name.ValueString()], numbers[p.Port.ValueInt64()] = true, true
 		if p.Protocol.ValueString() == "tcp" && p.Public.ValueBool() {
 			resp.Diagnostics.AddAttributeError(at.AtName("public"), "A TCP port is not public", "A tcp port is inside the cluster only, for now.")
+		}
+		if p.YaP.ValueBool() && !p.Public.IsUnknown() && !p.Public.ValueBool() {
+			resp.Diagnostics.AddAttributeError(at.AtName("yap"), "A YaP port is public", "Only a public port lets the company's people through, signed in.")
+		}
+		if p.YaP.ValueBool() && known(p.Protocol) && p.Protocol.ValueString() != "http" {
+			resp.Diagnostics.AddAttributeError(at.AtName("yap"), "A YaP port is an HTTP one", "A browser signs in to it: grpc and tcp ones cannot be YaP.")
 		}
 		if p.Default.ValueBool() {
 			defaults++

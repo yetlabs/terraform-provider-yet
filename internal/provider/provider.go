@@ -136,6 +136,10 @@ func (p *yetProvider) Resources(context.Context) []func() resource.Resource {
 		newGitHubConnectionResource,
 		newApplicationAddonResource,
 		newDatabaseAttachmentResource,
+		newScheduleResource,
+		newVaultResource,
+		newVaultSecretResource,
+		newVaultGrantResource,
 	}
 }
 
@@ -149,6 +153,7 @@ func (p *yetProvider) Actions(context.Context) []func() action.Action {
 		newApplicationBuildAction,
 		newApplicationPodDeleteAction,
 		newDNSZoneVerifyAction,
+		newServerUpdateAgentAction,
 		newSendEmailAction,
 	}
 }
@@ -156,9 +161,11 @@ func (p *yetProvider) Actions(context.Context) []func() action.Action {
 func (p *yetProvider) DataSources(context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		newEnvironmentDataSource,
+		newNamespaceDataSource,
 		newRuntimeDataSource,
 		newDNSZoneDataSource,
 		newStacksDataSource,
+		newUsageDataSource,
 		newGitHubRepositoriesDataSource,
 		newGitHubBranchesDataSource,
 		newIAMAccessDataSource,

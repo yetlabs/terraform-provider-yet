@@ -42,6 +42,7 @@ resource "yet_cloud_runtime" "ci" {
 
 - `ingress` (String) The address its environments' records point at: an IP or a name. Its tunnel's while it has one.
 - `ingress_enabled` (Boolean) Whether a k3s runtime's ingress is on: on unless set to `false` — for one that runs runners only. Off, it takes no environment and joins no pool; turned off or on, the agent makes its k3s again, its data kept — and not off while an environment runs there.
+- `region` (String) A Lambda runtime's region (stack `aws:lambda`, on a serverless `yet_cloud_server`): where its functions run, in the server's account — one runtime a region; the account's own when left out. An environment may list several (`functions`), and each application's stage picks one (`stage_function`).
 - `tunnel` (Boolean) Whether it is behind a Cloudflare tunnel of its own — its edge. A k3s runtime is, made while Cloud's edge is set, unless this says otherwise; only k3s runtimes have one, for now.
 
 ### Read-Only

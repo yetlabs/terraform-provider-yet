@@ -22,13 +22,44 @@ resource "yet_cloud_environment" "staging" {
   prefix     = "staging"
 }
 
-# Its applications' S3 buckets made in the production account.
+# Its applications' S3 buckets made in the production account — and, each
+# stage choosing, its applications run as Lambda functions too.
 resource "yet_cloud_environment" "production" {
   name           = "production"
   color          = "green"
   pool_id        = yet_cloud_pool.web.id
   zone_id        = yet_cloud_dns_zone.acme.id
   aws_account_id = yet_settings_aws_account.production.id
+  functions      = [yet_cloud_runtime.lambda.id]
+}
+
+# No servers at all: a serverless server — the AWS account — and a Lambda
+# runtime in each region it runs in. The environment may run on both: each
+# application's stage picks one (stage_function), by latency or by cost.
+resource "yet_cloud_server" "functions" {
+  name           = "functions"
+  aws_account_id = yet_settings_aws_account.production.id
+  service        = "serverless"
+}
+
+resource "yet_cloud_runtime" "lambda" {
+  name      = "lambda-sa"
+  stack     = "aws:lambda"
+  server_id = yet_cloud_server.functions.id
+  region    = "sa-east-1"
+}
+
+resource "yet_cloud_runtime" "lambda_us" {
+  name      = "lambda-us"
+  stack     = "aws:lambda"
+  server_id = yet_cloud_server.functions.id
+  region    = "us-east-1"
+}
+
+resource "yet_cloud_environment" "functions" {
+  name       = "functions"
+  runtime_id = yet_cloud_runtime.lambda.id
+  functions  = [yet_cloud_runtime.lambda_us.id]
 }
 ```
 
@@ -43,6 +74,7 @@ resource "yet_cloud_environment" "production" {
 
 - `aws_account_id` (String) The AWS account its applications' S3 buckets are made in — one connected for `applications`. Without one, its buckets wait. A stage on Yet's EC2 servers has them in its servers' account.
 - `color` (String) How Cloud draws it: `gray`, `red`, `orange`, `amber`, `green`, `teal`, `sky`, `blue`, `violet`, `pink`.
+- `functions` (List of String) Lambda runtimes (`yet_cloud_runtime` of stack `aws:lambda`, on a serverless `yet_cloud_server`) beside its runtimes, its applications may run on as functions — each stage choosing, by `yet_cloud_application`'s `stage_run` and `stage_function`. Empty, Lambda is off; one goes only once no stage runs as a function on it. For Lambda alone, its `runtime_id` is one instead.
 - `pool_id` (String) The pool it runs on — or `runtime_id`.
 - `prefix` (String) What goes before the zone's name: `staging` makes it `staging.<zone>`. Its root without one.
 - `runtime_id` (String) The runtime it runs on — or `pool_id`. It moves only while nothing is deployed there, or between a pool and one of its members.

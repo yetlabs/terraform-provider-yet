@@ -86,3 +86,33 @@ resource "yet_cloud_application" "panel" {
     WORKER_URL = yet_cloud_application.worker.internal_url
   }
 }
+
+# An internal tool only the company's people reach, signed in with Yet —
+# YaP, Yet-Aware Proxy: at its own address, it is told who asked
+# (X-Yet-Email, X-Yet-Name, X-Yet-Groups, X-Yet-Assertion). Here only the
+# ops team and Ana.
+resource "yet_cloud_application" "back_office" {
+  namespace_id = yet_cloud_namespace.shop.id
+  name         = "back-office"
+  stages       = [yet_cloud_environment.production.id]
+  ports        = [{ name = "http", port = 8080, public = true, yap = true }]
+
+  yap_everyone = false
+  yap_allowed  = ["ops@acme.com", "ana@acme.com"]
+}
+
+# Staging on its runtimes, production as a Lambda function in the
+# account of its Lambda runtime — behind CloudFront, at hooks.acme.com.
+resource "yet_cloud_application" "hooks" {
+  namespace_id = yet_cloud_namespace.shop.id
+  name         = "hooks"
+  subdomain    = "hooks"
+  port         = 8080
+  stages       = [yet_cloud_environment.staging.id, yet_cloud_environment.production.id]
+  stage_run = {
+    (yet_cloud_environment.production.id) = "lambda"
+  }
+  stage_function = {
+    (yet_cloud_environment.production.id) = yet_cloud_runtime.lambda.id
+  }
+}

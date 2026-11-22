@@ -38,13 +38,15 @@ resource "yet_cloud_database" "ledger" {
 ### Required
 
 - `environment_id` (String) The environment it runs in.
-- `kind` (String) `overlite`, `postgres` or `redis`.
+- `kind` (String) `overlite`, `postgres`, `redis` or `bucketdb` — in a bucket of the environment's AWS account, served beside each application attached to it.
 - `name` (String) Its name in the environment: lowercase letters, digits and dashes, up to 32, starting with a letter.
 
 ### Optional
 
 - `backup_every` (Number) How often it is copied, in hours: 1 to 168, or `0` for never. Copies are kept for an Overlite on a runtime of the company's.
 - `backup_keep` (Number) How many of its copies are kept, the newest: 1 to 365. Cloud keeps 7 while it is `0`, never set.
+- `bucket_existing` (Boolean) Whether `bucket_name` is one the account has: reached, never made.
+- `bucket_name` (String) A `bucketdb`'s bucket, as chosen: a new one's name — it begins `yet-<company>-` — or, `bucket_existing`, one the environment's account has. Unset, Yet names it.
 - `features` (Set of String) What it runs with: `pgvector` for Postgres; `volatile`, `evict` for Redis.
 - `hostname` (String) Its name on the edge, when it answers outside: in one of the company's DNS zones, once pointed at Yet.
 - `memory_mb` (Number) The memory it may use, in MB.

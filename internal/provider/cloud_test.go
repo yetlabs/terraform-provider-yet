@@ -58,7 +58,7 @@ func TestCloudSchemasHold(t *testing.T) {
 	}) {
 		t.Error("yet_cloud_application has no addons_on_delete")
 	}
-	for _, name := range []string{"yet_cloud_stacks", "yet_settings_github_repositories", "yet_settings_github_branches"} {
+	for _, name := range []string{"yet_cloud_stacks", "yet_cloud_usage", "yet_settings_github_repositories", "yet_settings_github_branches"} {
 		if got.DataSourceSchemas[name] == nil {
 			t.Errorf("no data source %s", name)
 		}

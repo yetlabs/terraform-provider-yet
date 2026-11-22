@@ -51,6 +51,7 @@ resource "yet_cloud_server" "ec2" {
 - `instance_type` (String) The instance's type, one Cloud offers (`t3.small`, `t4g.medium`, `m7i.large`…); `t3.small` when left out.
 - `rack_id` (String) The local rack it joins; the company's only one when left out.
 - `region` (String) The instance's AWS region; the account's when left out.
+- `service` (String) With `aws_account_id`: `ec2` (the default), an instance; or `serverless` — no machine, the account itself, connected for Applications, online at once, for Lambda runtimes (`yet_cloud_runtime` of stack `aws:lambda`), a region each.
 
 ### Read-Only
 
