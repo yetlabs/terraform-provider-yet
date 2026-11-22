@@ -36,14 +36,14 @@ jobs:
       - run: go generate ./...
       - run: git diff --compact-summary --exit-code
 
-  # Unit tests, with every Terraform the provider supports.
+  # Unit tests, on the Terraform it supports: 1.14 on — its actions are 1.14's.
   test:
     needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        terraform: ["1.9.*", "1.12.*", "1.14.*"]
+        terraform: ["1.14.*"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
