@@ -18,7 +18,7 @@ import (
 )
 
 /*
-A shared mailbox is the company's, not a person's — pedidos@avisos.acme.com —
+A shared mailbox is the company's, not a person's — pedidos@avisos.acme.example.com —
 read by the people given it beside their own, in Mail under "Shared with
 you". Its address is what it is, so a new address is a new mailbox (and the
 old one goes with its messages); its name and its members change in place.
@@ -59,7 +59,7 @@ func (r *sharedMailboxResource) Schema(_ context.Context, _ resource.SchemaReque
 				PlanModifiers:       computed,
 			},
 			"address": schema.StringAttribute{
-				MarkdownDescription: "Its address, lowercase, at one of the company's domains with mail: `pedidos@avisos.acme.com`.",
+				MarkdownDescription: "Its address, lowercase, at one of the company's domains with mail: `pedidos@avisos.acme.example.com`.",
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 				Validators:          []validator.String{stringvalidator.RegexMatches(mailboxAddress, "a lowercase email address")},

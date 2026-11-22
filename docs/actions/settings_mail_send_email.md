@@ -17,7 +17,7 @@ Sends an email from one of the company's subdomains' addresses (`yet_settings_ma
 action "yet_settings_mail_send_email" "launched" {
   config {
     from    = "Acme <ops@${yet_settings_mail_subdomain.notices.name}>"
-    to      = ["ana@acme.com.br"]
+    to      = ["ana@acme-br.example.com"]
     subject = "The storefront is up"
     html    = "<p>${yet_cloud_application.api.name} runs in production.</p>"
     tags    = { kind = "launch" }
@@ -48,7 +48,7 @@ resource "terraform_data" "launched" {
 
 ### Required
 
-- `from` (String) The sender, at a subdomain: `Acme <avisos@avisos.acme.com>` or the bare address.
+- `from` (String) The sender, at a subdomain: `Acme <avisos@avisos.acme.example.com>` or the bare address.
 - `subject` (String) The subject.
 - `to` (List of String) Who it goes to; with `cc` and `bcc`, up to 50.
 

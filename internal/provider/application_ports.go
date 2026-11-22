@@ -107,13 +107,13 @@ func portsAttr() schema.ListNestedAttribute {
 			},
 			"default": schema.BoolAttribute{
 				MarkdownDescription: "Whether it is the public one each stage's address answers on — the first public, unless one says so. " +
-					"Another public one answers at an address of its own, its name before the stage's: `admin-checkout.acme.com`, " +
-					"or `admin.acme.com` at a zone's `www`.",
+					"Another public one answers at an address of its own, its name before the stage's: `admin-checkout.acme.example.com`, " +
+					"or `admin.acme.example.com` at a zone's `www`.",
 				Optional: true, Computed: true,
 			},
 			"address": schema.StringAttribute{
 				MarkdownDescription: "For a public port that is not the default, the subdomain it answers at instead of its name " +
-					"before the stage's address: `back-office` answers at `back-office.staging.acme.com`. A lowercase label, " +
+					"before the stage's address: `back-office` answers at `back-office.staging.acme.example.com`. A lowercase label, " +
 					"its own among the ports, and on each stage not another application's.",
 				Optional: true,
 				Validators: []validator.String{stringvalidator.RegexMatches(labelRe,

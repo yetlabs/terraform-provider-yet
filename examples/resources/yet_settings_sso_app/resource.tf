@@ -2,15 +2,15 @@
 # their apps menu. Its client goes to the CRM's configuration.
 resource "yet_settings_sso_app" "crm" {
   name          = "CRM"
-  redirect_uris = ["https://crm.acme.com.br/auth/callback"]
+  redirect_uris = ["https://crm.acme-br.example.com/auth/callback"]
   allowed = [
     yet_settings_person.ana.email,
-    "vendas@acme.com.br",
+    "vendas@acme-br.example.com",
   ]
   in_menu     = true
-  home_url    = "https://crm.acme.com.br"
-  privacy_url = "https://crm.acme.com.br/privacy"
-  terms_url   = "https://crm.acme.com.br/terms"
+  home_url    = "https://crm.acme-br.example.com"
+  privacy_url = "https://crm.acme-br.example.com/privacy"
+  terms_url   = "https://crm.acme-br.example.com/terms"
 }
 
 output "crm_client_id" {
@@ -27,7 +27,7 @@ output "crm_client_secret" {
 resource "yet_settings_sso_app" "wiki" {
   name          = "Wiki"
   kind          = "saml"
-  entity_id     = "https://wiki.acme.com.br/saml"
-  redirect_uris = ["https://wiki.acme.com.br/saml/acs"]
+  entity_id     = "https://wiki.acme-br.example.com/saml"
+  redirect_uris = ["https://wiki.acme-br.example.com/saml/acs"]
   everyone      = true
 }

@@ -14,9 +14,9 @@ Where mail to a domain's addresses that do not exist goes, instead of bouncing.
 ## Example Usage
 
 ```terraform
-# Mail to any acme.dev address that does not exist reaches the list.
+# Mail to any acme.example.org address that does not exist reaches the list.
 resource "yet_settings_mail_catch_all" "acme" {
-  domain  = "acme.dev"
+  domain  = "acme.example.org"
   address = yet_settings_mail_list.finance.address
 }
 ```
@@ -40,7 +40,7 @@ In Terraform v1.5.0 and later, with an [`import` block](https://developer.hashic
 ```terraform
 import {
   to = yet_settings_mail_catch_all.acme
-  id = "acme.dev"
+  id = "acme.example.org"
 }
 ```
 
@@ -48,5 +48,5 @@ With [`terraform import`](https://developer.hashicorp.com/terraform/cli/commands
 
 ```shell
 # By the domain.
-terraform import yet_settings_mail_catch_all.acme acme.dev
+terraform import yet_settings_mail_catch_all.acme acme.example.org
 ```

@@ -112,11 +112,11 @@ resource "yet_cloud_application" "back_office" {
   ports        = [{ name = "http", port = 8080, public = true, yap = true }]
 
   yap_everyone = false
-  yap_allowed  = ["ops@acme.com", "ana@acme.com"]
+  yap_allowed  = ["ops@acme.example.com", "ana@acme.example.com"]
 }
 
 # Staging on its runtimes, production as a Lambda function in the
-# account of its Lambda runtime — behind CloudFront, at hooks.acme.com.
+# account of its Lambda runtime — behind CloudFront, at hooks.acme.example.com.
 resource "yet_cloud_application" "hooks" {
   namespace_id = yet_cloud_namespace.shop.id
   name         = "hooks"
@@ -218,8 +218,8 @@ Required:
 
 Optional:
 
-- `address` (String) For a public port that is not the default, the subdomain it answers at instead of its name before the stage's address: `back-office` answers at `back-office.staging.acme.com`. A lowercase label, its own among the ports, and on each stage not another application's.
-- `default` (Boolean) Whether it is the public one each stage's address answers on — the first public, unless one says so. Another public one answers at an address of its own, its name before the stage's: `admin-checkout.acme.com`, or `admin.acme.com` at a zone's `www`.
+- `address` (String) For a public port that is not the default, the subdomain it answers at instead of its name before the stage's address: `back-office` answers at `back-office.staging.acme.example.com`. A lowercase label, its own among the ports, and on each stage not another application's.
+- `default` (Boolean) Whether it is the public one each stage's address answers on — the first public, unless one says so. Another public one answers at an address of its own, its name before the stage's: `admin-checkout.acme.example.com`, or `admin.acme.example.com` at a zone's `www`.
 - `protocol` (String) `http` (the default), `grpc` or `tcp`.
 - `public` (Boolean) Whether it answers on the internet too, not only inside the cluster; a `tcp` one cannot, for now.
 - `yap` (Boolean) YaP — Yet-Aware Proxy: for a public `http` port, only the company's people get through, signed in with Yet; what it answers is told who they are — `X-Yet-Email`, `X-Yet-Name`, `X-Yet-Groups` and `X-Yet-Assertion`, the ID token Yet signed. Who gets in is the application's `yap_everyone` and `yap_allowed`.

@@ -250,7 +250,7 @@ func (d *dnsZoneDataSource) Metadata(_ context.Context, req datasource.MetadataR
 }
 
 func (d *dnsZoneDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-	name, id := nameOrID("The domain: `acme.dev`")
+	name, id := nameOrID("The domain: `acme.example.org`")
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "A DNS zone, by its domain or its id.",
 		Attributes: map[string]schema.Attribute{

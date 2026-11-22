@@ -1,5 +1,5 @@
 resource "yet_cloud_dns_zone" "acme" {
-  name = "acme.dev"
+  name = "acme.example.org"
 }
 
 # Where the registrar has to point.

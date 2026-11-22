@@ -90,7 +90,7 @@ func (r *domainClaimResource) Schema(_ context.Context, _ resource.SchemaRequest
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "The domain, lowercase: `acme.dev`.",
+				MarkdownDescription: "The domain, lowercase: `acme.example.org`.",
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 				Validators:          domainValidators,
@@ -211,7 +211,7 @@ func (r *domainResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "The domain, lowercase: `acme.dev`.",
+				MarkdownDescription: "The domain, lowercase: `acme.example.org`.",
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 				Validators:          domainValidators,

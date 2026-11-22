@@ -13,7 +13,7 @@ Asks a zone's domain for its nameservers again, now, rather than at Cloud's next
 
 ```terraform
 resource "yet_cloud_dns_zone" "acme" {
-  name = "acme.dev"
+  name = "acme.example.org"
 }
 
 action "yet_cloud_dns_zone_verify" "acme" {

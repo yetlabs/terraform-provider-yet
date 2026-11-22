@@ -15,7 +15,7 @@ A domain the company asks for. It is the company's once a TXT record at its root
 
 ```terraform
 resource "yet_settings_domain_claim" "br" {
-  name = "acme.com.br"
+  name = "acme-br.example.com"
 }
 
 # Its TXT, wherever the domain's DNS is kept — here, in the company's Cloud.
@@ -33,7 +33,7 @@ resource "yet_cloud_dns_record" "proof" {
 
 ### Required
 
-- `name` (String) The domain, lowercase: `acme.dev`.
+- `name` (String) The domain, lowercase: `acme.example.org`.
 
 ### Read-Only
 
@@ -47,7 +47,7 @@ In Terraform v1.5.0 and later, with an [`import` block](https://developer.hashic
 ```terraform
 import {
   to = yet_settings_domain_claim.br
-  id = "acme.com.br"
+  id = "acme-br.example.com"
 }
 ```
 
@@ -55,5 +55,5 @@ With [`terraform import`](https://developer.hashicorp.com/terraform/cli/commands
 
 ```shell
 # By the domain.
-terraform import yet_settings_domain_claim.br acme.com.br
+terraform import yet_settings_domain_claim.br acme-br.example.com
 ```

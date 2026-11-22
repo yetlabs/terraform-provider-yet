@@ -43,7 +43,7 @@ func (r *dnsZoneResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 		Attributes: map[string]schema.Attribute{
 			"id": idAttr,
 			"name": schema.StringAttribute{
-				MarkdownDescription: "The domain: `acme.dev`.",
+				MarkdownDescription: "The domain: `acme.example.org`.",
 				Required:            true,
 				PlanModifiers:       replace,
 			},

@@ -98,11 +98,11 @@ resource "yet_cloud_application" "back_office" {
   ports        = [{ name = "http", port = 8080, public = true, yap = true }]
 
   yap_everyone = false
-  yap_allowed  = ["ops@acme.com", "ana@acme.com"]
+  yap_allowed  = ["ops@acme.example.com", "ana@acme.example.com"]
 }
 
 # Staging on its runtimes, production as a Lambda function in the
-# account of its Lambda runtime — behind CloudFront, at hooks.acme.com.
+# account of its Lambda runtime — behind CloudFront, at hooks.acme.example.com.
 resource "yet_cloud_application" "hooks" {
   namespace_id = yet_cloud_namespace.shop.id
   name         = "hooks"

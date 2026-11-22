@@ -1,7 +1,7 @@
 action "yet_settings_mail_send_email" "launched" {
   config {
     from    = "Acme <ops@${yet_settings_mail_subdomain.notices.name}>"
-    to      = ["ana@acme.com.br"]
+    to      = ["ana@acme-br.example.com"]
     subject = "The storefront is up"
     html    = "<p>${yet_cloud_application.api.name} runs in production.</p>"
     tags    = { kind = "launch" }

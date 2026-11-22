@@ -13,7 +13,7 @@ A list: one address of the company's that delivers to several — its own people
 
 ```terraform
 resource "yet_settings_mail_list" "finance" {
-  domain      = "acme.dev"
+  domain      = "acme.example.org"
   name        = "financeiro"
   description = "Invoices and receipts."
   recipients = [
@@ -38,7 +38,7 @@ resource "yet_settings_mail_list" "finance" {
 
 ### Read-Only
 
-- `address` (String) The list's address: `financeiro@acme.dev`.
+- `address` (String) The list's address: `financeiro@acme.example.org`.
 - `id` (String) The list's id, as the mail server has it.
 
 ## Import

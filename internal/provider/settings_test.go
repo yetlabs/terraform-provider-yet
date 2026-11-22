@@ -64,7 +64,7 @@ func TestTheSettingsSchemasHold(t *testing.T) {
 
 /*
 fakeSettings is a company's Settings as these resources reach them, kept in
-memory: one person, Ana, at acme.dev, and whatever the tests make.
+memory: one person, Ana, at acme.example.org, and whatever the tests make.
 */
 type fakeSettings struct {
 	mu       sync.Mutex
@@ -90,7 +90,7 @@ func newFakeSettings(t *testing.T) (*httptest.Server, *fakeSettings) {
 		lists:    map[string]map[string]any{},
 		catchAll: map[string]string{},
 		sending:  "yet",
-		domains:  map[string]bool{"acme.dev": true},
+		domains:  map[string]bool{"acme.example.org": true},
 		claims:   map[string]string{},
 		subs:     map[string]string{},
 		shared:   map[string]map[string]any{},
@@ -128,21 +128,21 @@ func (f *fakeSettings) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case route == "GET /settings/people":
 		reply(200, map[string]any{
-			"people":  []map[string]any{{"id": "p1", "name": "ana", "email": "ana@acme.dev", "full_name": "Ana Costa"}},
+			"people":  []map[string]any{{"id": "p1", "name": "ana", "email": "ana@acme.example.org", "full_name": "Ana Costa"}},
 			"members": []any{},
 		})
-	case route == "GET /mail/domains/acme.dev/addresses":
+	case route == "GET /mail/domains/acme.example.org/addresses":
 		aliases := []map[string]any{}
 		for k := range f.aliases {
 			account, name, _ := strings.Cut(k, "/")
-			aliases = append(aliases, map[string]any{"name": name, "address": name + "@acme.dev", "account_id": account, "owner": "ana@acme.dev"})
+			aliases = append(aliases, map[string]any{"name": name, "address": name + "@acme.example.org", "account_id": account, "owner": "ana@acme.example.org"})
 		}
 		lists := []map[string]any{}
 		for _, l := range f.lists {
 			lists = append(lists, l)
 		}
 		var catchAll any
-		if a, ok := f.catchAll["acme.dev"]; ok {
+		if a, ok := f.catchAll["acme.example.org"]; ok {
 			catchAll = a
 		}
 		reply(200, map[string]any{"aliases": aliases, "lists": lists, "catch_all": catchAll})
@@ -154,17 +154,17 @@ func (f *fakeSettings) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		account, name, _ := strings.Cut(strings.TrimPrefix(p, "/mail/accounts/"), "/aliases/")
 		delete(f.aliases, account+"/"+name)
 		w.WriteHeader(http.StatusNoContent)
-	case route == "PUT /mail/domains/acme.dev/catch-all":
+	case route == "PUT /mail/domains/acme.example.org/catch-all":
 		if a := str("address"); a != "" {
-			f.catchAll["acme.dev"] = a
+			f.catchAll["acme.example.org"] = a
 		} else {
-			delete(f.catchAll, "acme.dev")
+			delete(f.catchAll, "acme.example.org")
 		}
 		reply(200, map[string]any{"ok": true})
-	case route == "POST /mail/domains/acme.dev/lists":
+	case route == "POST /mail/domains/acme.example.org/lists":
 		f.next++
 		id := fmt.Sprintf("l%d", f.next)
-		f.lists[id] = map[string]any{"id": id, "name": str("name"), "address": str("name") + "@acme.dev", "description": str("description"), "recipients": strs("recipients")}
+		f.lists[id] = map[string]any{"id": id, "name": str("name"), "address": str("name") + "@acme.example.org", "description": str("description"), "recipients": strs("recipients")}
 		reply(200, f.lists[id])
 	case strings.HasPrefix(p, "/mail/lists/") && f.lists[strings.TrimPrefix(p, "/mail/lists/")] != nil:
 		id := strings.TrimPrefix(p, "/mail/lists/")
@@ -254,7 +254,7 @@ func (f *fakeSettings) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		reply(200, map[string]any{"domains": domains, "claims": claims})
 	case route == "POST /settings/domains" && in["subdomain"] == true:
 		name := str("name")
-		if !strings.HasSuffix(name, ".acme.dev") {
+		if !strings.HasSuffix(name, ".acme.example.org") {
 			reply(400, map[string]string{"error": name + " is not under any of Acme’s domains: add it under Domains first."})
 			return
 		}
@@ -262,8 +262,8 @@ func (f *fakeSettings) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			reply(409, map[string]string{"error": name + " is the company’s already."})
 			return
 		}
-		f.subs[name] = "acme.dev"
-		reply(200, map[string]any{"name": name, "parent": "acme.dev", "mail": true, "warnings": []string{}})
+		f.subs[name] = "acme.example.org"
+		reply(200, map[string]any{"name": name, "parent": "acme.example.org", "mail": true, "warnings": []string{}})
 	case route == "POST /settings/domains":
 		name := str("name")
 		if _, ok := f.domains[name]; ok {
@@ -302,7 +302,7 @@ func (f *fakeSettings) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case route == "POST /mail/shared-mailboxes":
 		address := str("address")
 		local, domain, _ := strings.Cut(address, "@")
-		if domain != "acme.dev" && f.subs[domain] == "" {
+		if domain != "acme.example.org" && f.subs[domain] == "" {
 			reply(404, map[string]string{"error": domain + " has no mail yet."})
 			return
 		}
@@ -349,7 +349,7 @@ func (f *fakeSettings) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		a := map[string]any{
 			"id": id, "client_id": fmt.Sprintf("%d@acme", 1000+f.next), "kind": kind,
 			"everyone": false, "allowed": []string{}, "in_menu": true, "home_url": nil, "icon": nil,
-			"entity_id": nil, "created_by": "ana@acme.dev", "created_at": "2026-10-20 14:00:00",
+			"entity_id": nil, "created_by": "ana@acme.example.org", "created_at": "2026-10-20 14:00:00",
 		}
 		if kind == "saml" {
 			a["entity_id"], a["client_id"] = str("entity_id"), str("entity_id")
@@ -422,23 +422,23 @@ func TestMailSubdomain(t *testing.T) {
 			{
 				Config: providerFor(srv.URL) + `
 resource "yet_settings_mail_subdomain" "notices" {
-  name = "avisos.acme.dev"
+  name = "avisos.acme.example.org"
 }`,
 				ConfigStateChecks: []statecheck.StateCheck{
-					statecheck.ExpectKnownValue("yet_settings_mail_subdomain.notices", tfjsonpath.New("id"), knownvalue.StringExact("avisos.acme.dev")),
-					statecheck.ExpectKnownValue("yet_settings_mail_subdomain.notices", tfjsonpath.New("parent"), knownvalue.StringExact("acme.dev")),
+					statecheck.ExpectKnownValue("yet_settings_mail_subdomain.notices", tfjsonpath.New("id"), knownvalue.StringExact("avisos.acme.example.org")),
+					statecheck.ExpectKnownValue("yet_settings_mail_subdomain.notices", tfjsonpath.New("parent"), knownvalue.StringExact("acme.example.org")),
 				},
 			},
 			{
 				ResourceName:      "yet_settings_mail_subdomain.notices",
 				ImportState:       true,
-				ImportStateId:     "avisos.acme.dev",
+				ImportStateId:     "avisos.acme.example.org",
 				ImportStateVerify: true,
 			},
 			{
 				Config: providerFor(srv.URL) + `
 resource "yet_settings_mail_subdomain" "notices" {
-  name = "acme.com.br.example"
+  name = "globex.example"
 }`,
 				ExpectError: regexp.MustCompile(`is not under any`),
 			},
@@ -463,20 +463,20 @@ func TestMailSharedMailbox(t *testing.T) {
 			{
 				Config: providerFor(srv.URL) + `
 resource "yet_settings_mail_shared_mailbox" "orders" {
-  address = "pedidos@acme.dev"
-  members = ["ana@acme.dev"]
+  address = "pedidos@acme.example.org"
+  members = ["ana@acme.example.org"]
 }`,
 				ConfigStateChecks: []statecheck.StateCheck{
-					statecheck.ExpectKnownValue(box, tfjsonpath.New("id"), knownvalue.StringExact("pedidos@acme.dev")),
+					statecheck.ExpectKnownValue(box, tfjsonpath.New("id"), knownvalue.StringExact("pedidos@acme.example.org")),
 					statecheck.ExpectKnownValue(box, tfjsonpath.New("name"), knownvalue.StringExact("pedidos")),
 				},
 			},
 			{
 				Config: providerFor(srv.URL) + `
 resource "yet_settings_mail_shared_mailbox" "orders" {
-  address = "pedidos@acme.dev"
+  address = "pedidos@acme.example.org"
   name    = "Pedidos"
-  members = ["ana@acme.dev", "ops@acme.dev"]
+  members = ["ana@acme.example.org", "ops@acme.example.org"]
 }`,
 				ConfigPlanChecks: tfresource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction(box, plancheck.ResourceActionUpdate)},
@@ -489,7 +489,7 @@ resource "yet_settings_mail_shared_mailbox" "orders" {
 			{
 				ResourceName:      box,
 				ImportState:       true,
-				ImportStateId:     "pedidos@acme.dev",
+				ImportStateId:     "pedidos@acme.example.org",
 				ImportStateVerify: true,
 			},
 			{
@@ -525,7 +525,7 @@ func TestSSOApp(t *testing.T) {
 resource "yet_settings_sso_app" "crm" {
   name          = "Wiki"
   kind          = "saml"
-  redirect_uris = ["https://wiki.acme.dev/saml/acs"]
+  redirect_uris = ["https://wiki.acme.example.org/saml/acs"]
 }`,
 				ExpectError: regexp.MustCompile(`A SAML tool needs an entity_id`),
 			},
@@ -533,8 +533,8 @@ resource "yet_settings_sso_app" "crm" {
 				Config: providerFor(srv.URL) + `
 resource "yet_settings_sso_app" "crm" {
   name          = "CRM"
-  redirect_uris = ["https://crm.acme.dev/auth/callback"]
-  allowed       = ["ana@acme.dev"]
+  redirect_uris = ["https://crm.acme.example.org/auth/callback"]
+  allowed       = ["ana@acme.example.org"]
 }`,
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(app, tfjsonpath.New("id"), knownvalue.StringExact("sa_1")),
@@ -547,10 +547,10 @@ resource "yet_settings_sso_app" "crm" {
 				Config: providerFor(srv.URL) + `
 resource "yet_settings_sso_app" "crm" {
   name          = "CRM"
-  redirect_uris = ["https://crm.acme.dev/auth/callback"]
+  redirect_uris = ["https://crm.acme.example.org/auth/callback"]
   everyone      = true
   in_menu       = true
-  home_url      = "https://crm.acme.dev"
+  home_url      = "https://crm.acme.example.org"
 }`,
 				ConfigPlanChecks: tfresource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction(app, plancheck.ResourceActionUpdate)},
@@ -558,7 +558,7 @@ resource "yet_settings_sso_app" "crm" {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(app, tfjsonpath.New("everyone"), knownvalue.Bool(true)),
 					statecheck.ExpectKnownValue(app, tfjsonpath.New("allowed"), knownvalue.SetSizeExact(0)),
-					statecheck.ExpectKnownValue(app, tfjsonpath.New("home_url"), knownvalue.StringExact("https://crm.acme.dev")),
+					statecheck.ExpectKnownValue(app, tfjsonpath.New("home_url"), knownvalue.StringExact("https://crm.acme.example.org")),
 					statecheck.ExpectKnownValue(app, tfjsonpath.New("client_secret"), knownvalue.StringExact("s3cr3t-sa_1")),
 				},
 			},
@@ -588,15 +588,15 @@ resource "yet_settings_sso_app" "crm" {
 resource "yet_settings_sso_app" "crm" {
   name          = "Wiki"
   kind          = "saml"
-  entity_id     = "https://wiki.acme.dev/saml"
-  redirect_uris = ["https://wiki.acme.dev/saml/acs"]
+  entity_id     = "https://wiki.acme.example.org/saml"
+  redirect_uris = ["https://wiki.acme.example.org/saml/acs"]
 }`,
 				ConfigPlanChecks: tfresource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{plancheck.ExpectResourceAction(app, plancheck.ResourceActionDestroyBeforeCreate)},
 				},
 				ConfigStateChecks: []statecheck.StateCheck{
-					statecheck.ExpectKnownValue(app, tfjsonpath.New("entity_id"), knownvalue.StringExact("https://wiki.acme.dev/saml")),
-					statecheck.ExpectKnownValue(app, tfjsonpath.New("client_id"), knownvalue.StringExact("https://wiki.acme.dev/saml")),
+					statecheck.ExpectKnownValue(app, tfjsonpath.New("entity_id"), knownvalue.StringExact("https://wiki.acme.example.org/saml")),
+					statecheck.ExpectKnownValue(app, tfjsonpath.New("client_id"), knownvalue.StringExact("https://wiki.acme.example.org/saml")),
 					statecheck.ExpectKnownValue(app, tfjsonpath.New("client_secret"), knownvalue.Null()),
 				},
 			},
@@ -621,15 +621,15 @@ func TestSendEmail(t *testing.T) {
 			{
 				Config: providerFor(srv.URL) + `
 resource "yet_settings_mail_subdomain" "notices" {
-  name = "avisos.acme.dev"
+  name = "avisos.acme.example.org"
 }
 
 action "yet_settings_mail_send_email" "ready" {
   config {
     from            = "Acme <ops@${yet_settings_mail_subdomain.notices.name}>"
-    to              = ["ana@acme.dev"]
+    to              = ["ana@acme.example.org"]
     subject         = "Notices are ready"
-    text            = "avisos.acme.dev sends now."
+    text            = "avisos.acme.example.org sends now."
     tags            = { source = "terraform", kind = "notice" }
     idempotency_key = "notices-ready"
 
@@ -657,7 +657,7 @@ resource "terraform_data" "ready" {
 					e := f.emails[0]
 					tags, _ := json.Marshal(e["tags"])
 					at := e["attachments"].([]any)[0].(map[string]any)
-					if e["key"] != "notices-ready" || e["from"] != "Acme <ops@avisos.acme.dev>" ||
+					if e["key"] != "notices-ready" || e["from"] != "Acme <ops@avisos.acme.example.org>" ||
 						string(tags) != `[{"name":"kind","value":"notice"},{"name":"source","value":"terraform"}]` ||
 						at["content"] != "aGVsbG8=" || e["html"] != nil {
 						return fmt.Errorf("sent as: %+v", e)
@@ -684,22 +684,22 @@ func TestMailList(t *testing.T) {
 			{
 				Config: providerFor(srv.URL) + `
 resource "yet_settings_mail_list" "finance" {
-  domain     = "acme.dev"
+  domain     = "acme.example.org"
   name       = "financeiro"
-  recipients = ["ana@acme.dev"]
+  recipients = ["ana@acme.example.org"]
 }`,
 				ConfigStateChecks: []statecheck.StateCheck{
-					statecheck.ExpectKnownValue("yet_settings_mail_list.finance", tfjsonpath.New("address"), knownvalue.StringExact("financeiro@acme.dev")),
+					statecheck.ExpectKnownValue("yet_settings_mail_list.finance", tfjsonpath.New("address"), knownvalue.StringExact("financeiro@acme.example.org")),
 					statecheck.ExpectKnownValue("yet_settings_mail_list.finance", tfjsonpath.New("description"), knownvalue.StringExact("")),
 				},
 			},
 			{
 				Config: providerFor(srv.URL) + `
 resource "yet_settings_mail_list" "finance" {
-  domain      = "acme.dev"
+  domain      = "acme.example.org"
   name        = "financeiro"
   description = "Invoices and receipts."
-  recipients  = ["ana@acme.dev", "accounting@example.com"]
+  recipients  = ["ana@acme.example.org", "accounting@example.com"]
 }`,
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue("yet_settings_mail_list.finance", tfjsonpath.New("recipients"), knownvalue.SetSizeExact(2)),
@@ -735,13 +735,13 @@ resource "yet_settings_mail_alias" "contact" {
 }
 
 resource "yet_settings_mail_catch_all" "acme" {
-  domain  = "acme.dev"
+  domain  = "acme.example.org"
   address = yet_settings_mail_alias.contact.address
 }`,
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue("yet_settings_mail_alias.contact", tfjsonpath.New("id"), knownvalue.StringExact("p1/contato")),
-					statecheck.ExpectKnownValue("yet_settings_mail_alias.contact", tfjsonpath.New("domain"), knownvalue.StringExact("acme.dev")),
-					statecheck.ExpectKnownValue("yet_settings_mail_catch_all.acme", tfjsonpath.New("address"), knownvalue.StringExact("contato@acme.dev")),
+					statecheck.ExpectKnownValue("yet_settings_mail_alias.contact", tfjsonpath.New("domain"), knownvalue.StringExact("acme.example.org")),
+					statecheck.ExpectKnownValue("yet_settings_mail_catch_all.acme", tfjsonpath.New("address"), knownvalue.StringExact("contato@acme.example.org")),
 				},
 			},
 			{
@@ -870,7 +870,7 @@ func TestDomainClaimAndDomain(t *testing.T) {
 	tfresource.UnitTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: factories,
 		CheckDestroy: func(*terraform.State) error {
-			if _, ok := f.domains["acme.com.br"]; ok || len(f.claims) != 0 {
+			if _, ok := f.domains["acme-br.example.com"]; ok || len(f.claims) != 0 {
 				return fmt.Errorf("left: %v %v", f.domains, f.claims)
 			}
 			return nil
@@ -879,14 +879,14 @@ func TestDomainClaimAndDomain(t *testing.T) {
 			{
 				Config: providerFor(srv.URL) + `
 resource "yet_settings_domain_claim" "br" {
-  name = "acme.com.br"
+  name = "acme-br.example.com"
 }
 
 resource "yet_settings_domain" "br" {
   name = yet_settings_domain_claim.br.name
 }`,
 				ConfigStateChecks: []statecheck.StateCheck{
-					statecheck.ExpectKnownValue("yet_settings_domain_claim.br", tfjsonpath.New("txt"), knownvalue.StringExact("yet-verification=acme.com.br")),
+					statecheck.ExpectKnownValue("yet_settings_domain_claim.br", tfjsonpath.New("txt"), knownvalue.StringExact("yet-verification=acme-br.example.com")),
 					statecheck.ExpectKnownValue("yet_settings_domain.br", tfjsonpath.New("verified_by"), knownvalue.StringExact("txt")),
 					statecheck.ExpectKnownValue("yet_settings_domain.br", tfjsonpath.New("mail"), knownvalue.Bool(false)),
 				},
@@ -894,7 +894,7 @@ resource "yet_settings_domain" "br" {
 			{
 				Config: providerFor(srv.URL) + `
 resource "yet_settings_domain_claim" "br" {
-  name = "acme.com.br"
+  name = "acme-br.example.com"
 }
 
 resource "yet_settings_domain" "br" {

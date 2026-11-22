@@ -14,7 +14,7 @@ Another address for someone of the company: `contato@` landing in Ana's inbox. I
 ## Example Usage
 
 ```terraform
-# contato@acme.dev, landing in Ana's inbox.
+# contato@acme.example.org, landing in Ana's inbox.
 resource "yet_settings_mail_alias" "contact" {
   person_id = yet_settings_person.ana.id
   name      = "contato"
@@ -31,7 +31,7 @@ resource "yet_settings_mail_alias" "contact" {
 
 ### Read-Only
 
-- `address` (String) The whole alias: `contato@acme.dev`.
+- `address` (String) The whole alias: `contato@acme.example.org`.
 - `domain` (String) The person's domain, where the alias is.
 - `id` (String) `<person_id>/<name>`.
 

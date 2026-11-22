@@ -264,11 +264,11 @@ resource "yet_cloud_application" "admin" {
 				Config: app(`
   ports        = [{ name = "http", port = 3000, public = true, yap = true }]
   yap_everyone = false
-  yap_allowed  = ["ops@acme.dev"]
+  yap_allowed  = ["ops@acme.example.org"]
 `),
 				ConfigStateChecks: []statecheck.StateCheck{
 					is(tfjsonpath.New("yap_everyone"), knownvalue.Bool(false)),
-					is(tfjsonpath.New("yap_allowed"), knownvalue.ListExact([]knownvalue.Check{knownvalue.StringExact("ops@acme.dev")})),
+					is(tfjsonpath.New("yap_allowed"), knownvalue.ListExact([]knownvalue.Check{knownvalue.StringExact("ops@acme.example.org")})),
 				},
 			},
 			{ResourceName: "yet_cloud_application.admin", ImportState: true, ImportStateVerify: true},

@@ -14,7 +14,7 @@ A DNS zone, by its domain or its id.
 ```terraform
 # By its domain…
 data "yet_cloud_dns_zone" "acme" {
-  name = "acme.dev"
+  name = "acme.example.org"
 }
 
 # …or by its id.
@@ -29,7 +29,7 @@ data "yet_cloud_dns_zone" "shop" {
 ### Optional
 
 - `id` (String) Its id; or `name`.
-- `name` (String) The domain: `acme.dev`; or `id`.
+- `name` (String) The domain: `acme.example.org`; or `id`.
 
 ### Read-Only
 

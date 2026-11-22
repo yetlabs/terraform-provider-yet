@@ -32,7 +32,7 @@ resource "yet_settings_domain" "br" {
 
 ### Required
 
-- `name` (String) The domain, lowercase: `acme.dev`.
+- `name` (String) The domain, lowercase: `acme.example.org`.
 
 ### Optional
 
@@ -50,7 +50,7 @@ In Terraform v1.5.0 and later, with an [`import` block](https://developer.hashic
 ```terraform
 import {
   to = yet_settings_domain.br
-  id = "acme.com.br"
+  id = "acme-br.example.com"
 }
 ```
 
@@ -58,5 +58,5 @@ With [`terraform import`](https://developer.hashicorp.com/terraform/cli/commands
 
 ```shell
 # By the domain.
-terraform import yet_settings_domain.br acme.com.br
+terraform import yet_settings_domain.br acme-br.example.com
 ```

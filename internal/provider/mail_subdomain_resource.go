@@ -14,7 +14,7 @@ import (
 )
 
 /*
-A subdomain is for the mail a company's systems send — avisos.acme.com — each
+A subdomain is for the mail a company's systems send — avisos.acme.example.com — each
 with a reputation of its own, so a campaign's complaints never hold back an
 order notice. Under a domain the company already showed is its own, it needs
 no showing of its own: made, it is the company's at once, its mail on. Its
@@ -50,13 +50,13 @@ func (r *subdomainResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "The whole name, lowercase, under one of the company's domains: `avisos.acme.com`.",
+				MarkdownDescription: "The whole name, lowercase, under one of the company's domains: `avisos.acme.example.com`.",
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 				Validators:          domainValidators,
 			},
 			"parent": schema.StringAttribute{
-				MarkdownDescription: "The company's domain it is under: `acme.com`.",
+				MarkdownDescription: "The company's domain it is under: `acme.example.com`.",
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},

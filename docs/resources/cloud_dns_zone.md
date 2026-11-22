@@ -15,7 +15,7 @@ A domain whose records Cloud keeps.
 
 ```terraform
 resource "yet_cloud_dns_zone" "acme" {
-  name = "acme.dev"
+  name = "acme.example.org"
 }
 
 # Where the registrar has to point.
@@ -29,7 +29,7 @@ output "nameservers" {
 
 ### Required
 
-- `name` (String) The domain: `acme.dev`.
+- `name` (String) The domain: `acme.example.org`.
 
 ### Read-Only
 

@@ -1,5 +1,5 @@
 resource "yet_cloud_dns_zone" "acme" {
-  name = "acme.dev"
+  name = "acme.example.org"
 }
 
 action "yet_cloud_dns_zone_verify" "acme" {

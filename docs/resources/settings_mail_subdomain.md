@@ -16,7 +16,7 @@ A subdomain of one of the company's domains, for the mail its systems send: on t
 ```terraform
 # Order notices from a subdomain of their own, apart from the people's mail.
 resource "yet_settings_mail_subdomain" "notices" {
-  name = "avisos.acme.com.br"
+  name = "avisos.acme-br.example.com"
 
   depends_on = [yet_settings_domain.br]
 }
@@ -27,12 +27,12 @@ resource "yet_settings_mail_subdomain" "notices" {
 
 ### Required
 
-- `name` (String) The whole name, lowercase, under one of the company's domains: `avisos.acme.com`.
+- `name` (String) The whole name, lowercase, under one of the company's domains: `avisos.acme.example.com`.
 
 ### Read-Only
 
 - `id` (String) The subdomain's name.
-- `parent` (String) The company's domain it is under: `acme.com`.
+- `parent` (String) The company's domain it is under: `acme.example.com`.
 
 ## Import
 
@@ -41,7 +41,7 @@ In Terraform v1.5.0 and later, with an [`import` block](https://developer.hashic
 ```terraform
 import {
   to = yet_settings_mail_subdomain.notices
-  id = "avisos.acme.com.br"
+  id = "avisos.acme-br.example.com"
 }
 ```
 
@@ -49,5 +49,5 @@ With [`terraform import`](https://developer.hashicorp.com/terraform/cli/commands
 
 ```shell
 # By the subdomain's name.
-terraform import yet_settings_mail_subdomain.notices avisos.acme.com.br
+terraform import yet_settings_mail_subdomain.notices avisos.acme-br.example.com
 ```

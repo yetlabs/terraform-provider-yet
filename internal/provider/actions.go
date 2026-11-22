@@ -657,7 +657,7 @@ func (a *sendEmailAction) Schema(_ context.Context, _ action.SchemaRequest, resp
 			"it sent then, and sends nothing.",
 		Attributes: map[string]schema.Attribute{
 			"from": schema.StringAttribute{
-				MarkdownDescription: "The sender, at a subdomain: `Acme <avisos@avisos.acme.com>` or the bare address.",
+				MarkdownDescription: "The sender, at a subdomain: `Acme <avisos@avisos.acme.example.com>` or the bare address.",
 				Required:            true,
 				Validators:          []validator.String{stringvalidator.LengthBetween(3, 320)},
 			},

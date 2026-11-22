@@ -44,12 +44,12 @@ resource "yet_settings_aws_account_role" "production" {
 }
 
 # An account for its applications' buckets, named as the company names them:
-# the stack lets Yet make and set up only buckets beginning vinilo-.
+# the stack lets Yet make and set up only buckets beginning acme-media-.
 resource "yet_settings_aws_account" "media" {
   name          = "Media"
   region        = "sa-east-1"
   uses          = ["applications"]
-  bucket_prefix = "vinilo-"
+  bucket_prefix = "acme-media-"
 }
 
 resource "aws_cloudformation_stack" "media" {

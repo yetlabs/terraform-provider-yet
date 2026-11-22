@@ -79,7 +79,7 @@ func (r *mailAliasResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				PlanModifiers:       computed,
 			},
 			"address": schema.StringAttribute{
-				MarkdownDescription: "The whole alias: `contato@acme.dev`.",
+				MarkdownDescription: "The whole alias: `contato@acme.example.org`.",
 				Computed:            true,
 				PlanModifiers:       computed,
 			},
@@ -239,7 +239,7 @@ func (r *mailListResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				Required:            true,
 			},
 			"address": schema.StringAttribute{
-				MarkdownDescription: "The list's address: `financeiro@acme.dev`.",
+				MarkdownDescription: "The list's address: `financeiro@acme.example.org`.",
 				Computed:            true,
 				PlanModifiers:       computed,
 			},

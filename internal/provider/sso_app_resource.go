@@ -109,7 +109,7 @@ func (r *ssoAppResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Validators:    []validator.String{stringvalidator.OneOf("server", "browser", "saml")},
 			},
 			"entity_id": schema.StringAttribute{
-				MarkdownDescription: "A `saml` tool's Entity ID, which it needs — `https://wiki.acme.com/saml`, up to 1000 " +
+				MarkdownDescription: "A `saml` tool's Entity ID, which it needs — `https://wiki.acme.example.com/saml`, up to 1000 " +
 					"characters, no spaces. Changing it makes the tool again.",
 				Optional:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
@@ -201,7 +201,7 @@ func (r *ssoAppResource) fill(ctx context.Context, m *ssoAppModel, a *yet.SSOApp
 	m.Everyone = types.BoolValue(a.Everyone)
 	m.Allowed = setOf(ctx, a.Allowed, &d.d)
 	m.InMenu = types.BoolValue(a.InMenu)
-	// yet writes the address as a browser does — https://crm.acme.com/ —
+	// yet writes the address as a browser does — https://crm.acme.example.com/ —
 	// so the one given stays when that is all that differs.
 	if !sameURL(m.HomeURL.ValueString(), a.HomeURL) {
 		m.HomeURL = orNull(a.HomeURL)

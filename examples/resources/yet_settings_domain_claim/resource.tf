@@ -1,5 +1,5 @@
 resource "yet_settings_domain_claim" "br" {
-  name = "acme.com.br"
+  name = "acme-br.example.com"
 }
 
 # Its TXT, wherever the domain's DNS is kept — here, in the company's Cloud.

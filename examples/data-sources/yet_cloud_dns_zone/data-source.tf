@@ -1,6 +1,6 @@
 # By its domain…
 data "yet_cloud_dns_zone" "acme" {
-  name = "acme.dev"
+  name = "acme.example.org"
 }
 
 # …or by its id.

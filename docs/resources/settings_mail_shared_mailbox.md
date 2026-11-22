@@ -29,7 +29,7 @@ resource "yet_settings_mail_shared_mailbox" "orders" {
 
 ### Required
 
-- `address` (String) Its address, lowercase, at one of the company's domains with mail: `pedidos@avisos.acme.com`.
+- `address` (String) Its address, lowercase, at one of the company's domains with mail: `pedidos@avisos.acme.example.com`.
 - `members` (Set of String) The people in it, by address — only the company's — whole: those left out stop seeing it.
 
 ### Optional
@@ -47,7 +47,7 @@ In Terraform v1.5.0 and later, with an [`import` block](https://developer.hashic
 ```terraform
 import {
   to = yet_settings_mail_shared_mailbox.orders
-  id = "pedidos@avisos.acme.com.br"
+  id = "pedidos@avisos.acme-br.example.com"
 }
 ```
 
@@ -55,5 +55,5 @@ With [`terraform import`](https://developer.hashicorp.com/terraform/cli/commands
 
 ```shell
 # By the shared mailbox's address.
-terraform import yet_settings_mail_shared_mailbox.orders pedidos@avisos.acme.com.br
+terraform import yet_settings_mail_shared_mailbox.orders pedidos@avisos.acme-br.example.com
 ```
